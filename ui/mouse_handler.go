@@ -1,0 +1,213 @@
+package ui
+
+import (
+	"image/color"
+	"math"
+	"paint-drawer-pro/models"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
+)
+
+
+type MouseHandler struct {
+	widget.BaseWidget
+	UI           *MainUI
+	StartPoint   models.Point
+	CurrentPoint models.Point
+	IsDrawing    bool
+	LastPoint    models.Point
+	PolyPoints   []models.Point
+}
+
+
+func NewMouseHandler(ui *MainUI) *MouseHandler {
+	handler := &MouseHandler{
+		UI: ui,
+	}
+	handler.ExtendBaseWidget(handler)
+	return handler
+}
+
+
+func (h *MouseHandler) CreateRenderer() fyne.WidgetRenderer {
+	background := canvas.NewRectangle(color.RGBA{255, 255, 255, 0}) 
+	return widget.NewSimpleRenderer(background)
+}
+
+
+func (h *MouseHandler) Cursor() desktop.Cursor {
+	return desktop.CrosshairCursor
+}
+
+
+
+func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
+	x, y := int(ev.Position.X), int(ev.Position.Y)
+	h.StartPoint = models.Point{X: x, Y: y}
+	h.CurrentPoint = models.Point{X: x, Y: y}
+	
+	if h.UI.State.CurrentAction == "polygon" && ev.Button == desktop.MouseButtonPrimary {
+
+		if len(h.PolyPoints) == 0 {
+			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
+			h.UI.StatusLabel.SetText("Creating polygon... Click to add points, press Enter to finish")
+		} else {
+	
+			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
+			if len(h.PolyPoints) >= 3 {
+		
+				poly := models.NewPolygon(h.PolyPoints, color.RGBA{0, 0, 0, 255}, 1)
+		
+				h.UI.State.CurrentShape = poly
+				h.UI.Canvas.Refresh()
+			}
+			h.UI.StatusLabel.SetText("Added point to polygon. Click for more points, press Enter to finish")
+		}
+		return
+	}
+	
+	h.IsDrawing = true
+	
+	switch h.UI.State.CurrentAction {
+	case "line":
+
+		thickness := 1
+		if h.UI.State.PenType == "brush" {
+			thickness = h.UI.State.BrushThickness 
+		}
+
+		line := models.NewLine(
+			h.StartPoint,
+			h.StartPoint, 
+			color.RGBA{0, 0, 0, 255},
+			thickness,
+			h.UI.State.PenType,
+		)
+		h.UI.State.CurrentShape = line
+		h.UI.StatusLabel.SetText("Drawing line... Release to complete")
+
+	case "circle":
+		circle := models.NewCircle(
+			h.StartPoint,
+			1, 
+			color.RGBA{0, 0, 0, 255},
+		)
+		h.UI.State.CurrentShape = circle
+		h.UI.StatusLabel.SetText("Drawing circle... Release to complete")
+	}
+}
+
+
+func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
+	if !h.IsDrawing || h.UI.State.CurrentAction == "polygon" {
+		return
+	}
+	
+	x, y := int(ev.Position.X), int(ev.Position.Y)
+	h.CurrentPoint = models.Point{X: x, Y: y}
+	
+	
+	if h.UI.State.CurrentShape != nil {
+
+		h.UI.State.Shapes = append(h.UI.State.Shapes, h.UI.State.CurrentShape)
+		h.UI.State.CurrentShape = nil
+		h.IsDrawing = false
+		h.UI.Canvas.Refresh()
+
+		switch h.UI.State.CurrentAction {
+		case "line":
+			h.UI.StatusLabel.SetText("Line added")
+		case "circle":
+			h.UI.StatusLabel.SetText("Circle added")
+		}
+	}
+}
+
+
+func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
+	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
+		return
+	}
+	
+	x, y := int(ev.Position.X), int(ev.Position.Y)
+	h.CurrentPoint = models.Point{X: x, Y: y}
+	
+	switch shape := h.UI.State.CurrentShape.(type) {
+	case *models.Line:
+		shape.End = h.CurrentPoint
+		h.UI.Canvas.Refresh()
+
+	case *models.Circle:
+
+		dx := x - shape.Center.X
+		dy := y - shape.Center.Y
+		shape.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
+		h.UI.Canvas.Refresh()
+	}
+}
+
+
+func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
+	if ev.Name == fyne.KeyReturn && h.UI.State.CurrentAction == "polygon" && len(h.PolyPoints) >= 3 {
+
+		poly := models.NewPolygon(h.PolyPoints, color.RGBA{0, 0, 0, 255}, 1)
+		h.UI.State.Shapes = append(h.UI.State.Shapes, poly)
+		h.PolyPoints = nil
+		h.UI.State.CurrentShape = nil
+		h.UI.Canvas.Refresh()
+		h.UI.StatusLabel.SetText("Polygon added")
+	} else if ev.Name == fyne.KeyEscape {
+
+		h.UI.State.CurrentShape = nil
+		h.IsDrawing = false
+		h.PolyPoints = nil
+		h.UI.Canvas.Refresh()
+		h.UI.StatusLabel.SetText("Drawing canceled")
+	}
+}
+
+
+func (h *MouseHandler) Dragged(ev *fyne.DragEvent) {
+	h.MouseMoved(&desktop.MouseEvent{
+		PointEvent: fyne.PointEvent{
+			AbsolutePosition: ev.AbsolutePosition,
+			Position:         ev.Position,
+		},
+	})
+}
+
+
+func (h *MouseHandler) DragEnd() {
+	
+}
+
+
+func (h *MouseHandler) Tapped(ev *fyne.PointEvent) {
+	h.MouseDown(&desktop.MouseEvent{
+		PointEvent: *ev,
+		Button:     desktop.MouseButtonPrimary,
+	})
+	
+	
+	if h.UI.State.CurrentAction == "polygon" {
+		return
+	}
+	
+	
+	h.MouseUp(&desktop.MouseEvent{
+		PointEvent: *ev,
+		Button:     desktop.MouseButtonPrimary,
+	})
+}
+
+
+func (h *MouseHandler) TappedSecondary(ev *fyne.PointEvent) {
+	
+	h.UI.State.CurrentShape = nil
+	h.IsDrawing = false
+	h.UI.Canvas.Refresh()
+	h.UI.StatusLabel.SetText("Drawing canceled")
+}
