@@ -165,22 +165,21 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 	
 	
 	for _, shape := range ui.State.Shapes {
-
-		canvas := make([][]color.Color, w)
-		for i := range canvas {
-			canvas[i] = make([]color.Color, h)
-			for j := 0; j < h; j++ {
-				canvas[i][j] = img.At(i, j)
+		
+		canvas := make([][]color.Color, h)
+		for j := range canvas {
+			canvas[j] = make([]color.Color, w)
+			for i := 0; i < w; i++ {
+				canvas[j][i] = img.At(i, j)
 			}
 		}
-
+		
 		shape.Draw(canvas, ui.State.AntiAliasing)
-
-
+		
 		for x := 0; x < w; x++ {
 			for y := 0; y < h; y++ {
-				if canvas[x][y] != nil {
-					img.Set(x, y, canvas[x][y])
+				if canvas[y][x] != nil {
+					img.Set(x, y, canvas[y][x])
 				}
 			}
 		}
@@ -188,22 +187,22 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 	
 	
 	if ui.State.CurrentShape != nil {
-
-		canvas := make([][]color.Color, w)
-		for i := range canvas {
-			canvas[i] = make([]color.Color, h)
-			for j := 0; j < h; j++ {
-				canvas[i][j] = img.At(i, j)
+		
+		canvas := make([][]color.Color, h)
+		for j := range canvas {
+			canvas[j] = make([]color.Color, w)
+			for i := 0; i < w; i++ {
+				canvas[j][i] = img.At(i, j)
 			}
 		}
-
+		
 		ui.State.CurrentShape.Draw(canvas, ui.State.AntiAliasing)
-
-
+		
+		
 		for x := 0; x < w; x++ {
 			for y := 0; y < h; y++ {
-				if canvas[x][y] != nil {
-					img.Set(x, y, canvas[x][y])
+				if canvas[y][x] != nil {
+					img.Set(x, y, canvas[y][x])
 				}
 			}
 		}
