@@ -44,4 +44,5 @@ type DrawingState struct {
 	AntiAliasing   bool
 	PenType        string 
 	BrushThickness int    
+	CurrentColor   color.RGBA 
 }
