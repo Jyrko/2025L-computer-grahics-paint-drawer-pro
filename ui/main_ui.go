@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	"paint-drawer-pro/models"
 
 	"fyne.io/fyne/v2"
@@ -20,6 +21,9 @@ type MainUI struct {
 	ToolsContainer  *fyne.Container
 	StatusLabel     *widget.Label
 	CurrentToolText *widget.Label
+	PillLengthSlider *widget.Slider
+	PillLengthLabel  *widget.Label
+	PillLengthContainer *fyne.Container
 	State           models.DrawingState
 }
 
@@ -37,6 +41,25 @@ func NewMainUI(window fyne.Window) *MainUI {
 	}
 
 	
+	ui.PillLengthLabel = widget.NewLabel("Pill Length:")
+	pillLengthValue := widget.NewLabel("100")
+	ui.PillLengthSlider = widget.NewSlider(50, 600)
+	ui.PillLengthSlider.SetValue(100)
+	ui.PillLengthSlider.Step = 1
+	ui.PillLengthSlider.OnChanged = func(value float64) {
+		length := int(value)
+		pillLengthValue.SetText(fmt.Sprintf("%d", length))
+		ui.StatusLabel.SetText(fmt.Sprintf("Pill length set to %d", length))
+		
+		
+		ui.updatePillLength(length)
+	}
+	ui.PillLengthContainer = container.NewBorder(
+		nil, nil, ui.PillLengthLabel, pillLengthValue, ui.PillLengthSlider,
+	)
+	
+	ui.PillLengthContainer.Hide()
+
 	ui.Canvas = canvas.NewRaster(func(w, h int) image.Image {
 		return ui.renderCanvas(w, h)
 	})
@@ -53,30 +76,41 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.State.CurrentAction = "line"
 		ui.CurrentToolText.SetText("Current tool: Line")
 		ui.StatusLabel.SetText("Line tool selected")
+		ui.PillLengthContainer.Hide() 
 	})
 
 	circleBtn := widget.NewButton("Circle", func() {
 		ui.State.CurrentAction = "circle"
 		ui.CurrentToolText.SetText("Current tool: Circle")
 		ui.StatusLabel.SetText("Circle tool selected")
+		ui.PillLengthContainer.Hide() 
 	})
 
 	polygonBtn := widget.NewButton("Polygon", func() {
 		ui.State.CurrentAction = "polygon"
 		ui.CurrentToolText.SetText("Current tool: Polygon")
 		ui.StatusLabel.SetText("Polygon tool selected")
+		ui.PillLengthContainer.Hide() 
 	})
 
 	pillBtn := widget.NewButton("Pill", func() {
 		ui.State.CurrentAction = "pill"
 		ui.CurrentToolText.SetText("Current tool: Pill")
 		ui.StatusLabel.SetText("Pill tool selected: Click to place first end, then set radius, then place second end")
+		
+		
+		ui.PillLengthContainer.Show()
+		
+		ui.PillLengthSlider.SetValue(100)
 	})
 
 	selectBtn := widget.NewButton("Select", func() {
 		ui.State.CurrentAction = "select"
 		ui.CurrentToolText.SetText("Current tool: Select")
 		ui.StatusLabel.SetText("Select tool active")
+		
+		
+		ui.PillLengthContainer.Hide()
 	})
 
 	clearBtn := widget.NewButton("Clear All", func() {
@@ -293,6 +327,8 @@ func NewMainUI(window fyne.Window) *MainUI {
 		widget.NewSeparator(),
 		thicknessContainer,
 		widget.NewSeparator(),
+		ui.PillLengthContainer, 
+		widget.NewSeparator(),
 		colorLabel,
 		colorContainer,
 		widget.NewSeparator(),
@@ -447,6 +483,57 @@ func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Colo
 					canvas[py][px] = c
 				}
 			}
+		}
+	}
+}
+
+
+func (ui *MainUI) updatePillLength(length int) {
+	
+	if ui.State.CurrentAction == "select" && ui.State.SelectedShape != nil {
+		if pill, ok := ui.State.SelectedShape.(*models.Pill); ok {
+			
+			dx := pill.End.X - pill.Start.X
+			dy := pill.End.Y - pill.Start.Y
+			currentLength := math.Sqrt(float64(dx*dx + dy*dy))
+			
+			
+			if currentLength <= 0 {
+				return
+			}
+			
+			
+			dirX := float64(dx) / currentLength
+			dirY := float64(dy) / currentLength
+			
+			
+			pill.End.X = pill.Start.X + int(dirX * float64(length))
+			pill.End.Y = pill.Start.Y + int(dirY * float64(length))
+			
+			ui.Canvas.Refresh()
+		}
+	} else if ui.State.CurrentShape != nil {
+		
+		if pill, ok := ui.State.CurrentShape.(*models.Pill); ok && pill.Step >= 2 {
+			
+			dx := pill.End.X - pill.Start.X
+			dy := pill.End.Y - pill.Start.Y
+			currentLength := math.Sqrt(float64(dx*dx + dy*dy))
+			
+			
+			if currentLength <= 0 {
+				return
+			}
+			
+			
+			dirX := float64(dx) / currentLength
+			dirY := float64(dy) / currentLength
+			
+			
+			pill.End.X = pill.Start.X + int(dirX * float64(length))
+			pill.End.Y = pill.Start.Y + int(dirY * float64(length))
+			
+			ui.Canvas.Refresh()
 		}
 	}
 }

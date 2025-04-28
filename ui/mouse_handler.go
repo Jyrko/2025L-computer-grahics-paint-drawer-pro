@@ -58,6 +58,8 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 		
 		h.UI.State.SelectedShape = nil
 		
+		h.UI.PillLengthContainer.Hide()
+		
 		
 		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
 			shape := h.UI.State.Shapes[i]
@@ -66,12 +68,23 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				h.IsMoving = true
 				h.MoveStartX = adjustedPoint.X
 				h.MoveStartY = adjustedPoint.Y
-				h.UI.StatusLabel.SetText("Shape selected. Drag to move.")
+				
+				
+				if pill, isPill := shape.(*models.Pill); isPill {
+					dx := pill.End.X - pill.Start.X
+					dy := pill.End.Y - pill.Start.Y
+					length := math.Sqrt(float64(dx*dx + dy*dy))
+					h.UI.PillLengthSlider.SetValue(length)
+					h.UI.PillLengthContainer.Show()
+					h.UI.StatusLabel.SetText("Pill selected. Use slider to adjust length or drag to move.")
+				} else {
+					h.UI.StatusLabel.SetText("Shape selected. Drag to move.")
+				}
+				
 				h.UI.Canvas.Refresh()
 				return
 			}
 		}
-		
 		
 		h.UI.StatusLabel.SetText("No shape selected.")
 		return
@@ -104,12 +117,30 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				dy := adjustedPoint.Y - pill.Start.Y
 				pill.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
 				pill.Step = 2
-				h.UI.StatusLabel.SetText("Pill radius set. Click to place the second end.")
+				
+				
+				h.UI.PillLengthContainer.Show()
+				h.UI.PillLengthSlider.SetValue(float64(pill.Radius * 4)) 
+				
+				
+				if dx != 0 || dy != 0 {
+					length := float64(h.UI.PillLengthSlider.Value)
+					distance := math.Sqrt(float64(dx*dx + dy*dy))
+					dirX := float64(dx) / distance
+					dirY := float64(dy) / distance
+					pill.End.X = pill.Start.X + int(dirX * length)
+					pill.End.Y = pill.Start.Y + int(dirY * length)
+				} else {
+					
+					pill.End.X = pill.Start.X + int(h.UI.PillLengthSlider.Value)
+					pill.End.Y = pill.Start.Y
+				}
+				
+				h.UI.StatusLabel.SetText("Pill radius set. Use slider to adjust length, click to finalize.")
 				h.UI.Canvas.Refresh()
 				return
 			} else if pill.Step == 2 {
 				
-				pill.End = adjustedPoint
 				pill.Step = 3
 				
 				
