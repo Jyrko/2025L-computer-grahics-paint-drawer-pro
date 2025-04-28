@@ -20,6 +20,9 @@ type MouseHandler struct {
 	IsDrawing    bool
 	LastPoint    models.Point
 	PolyPoints   []models.Point
+	IsMoving     bool      
+	MoveStartX   int       
+	MoveStartY   int       
 }
 
 
@@ -44,23 +47,58 @@ func (h *MouseHandler) Cursor() desktop.Cursor {
 
 
 
+
 func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
-	x, y := int(ev.Position.X), int(ev.Position.Y)
-	h.StartPoint = models.Point{X: x, Y: y}
-	h.CurrentPoint = models.Point{X: x, Y: y}
+	adjustedPoint := h.adjustMousePosition(ev.PointEvent)
+	h.StartPoint = adjustedPoint
+	h.CurrentPoint = adjustedPoint
+	
+	
+	if h.UI.State.CurrentAction == "select" && ev.Button == desktop.MouseButtonPrimary {
+		
+		h.UI.State.SelectedShape = nil
+		
+		h.UI.PillLengthContainer.Hide()
+		
+		
+		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
+			shape := h.UI.State.Shapes[i]
+			if shape.Contains(adjustedPoint) {
+				h.UI.State.SelectedShape = shape
+				h.IsMoving = true
+				h.MoveStartX = adjustedPoint.X
+				h.MoveStartY = adjustedPoint.Y
+				
+				
+				if pill, isPill := shape.(*models.Pill); isPill {
+					dx := pill.End.X - pill.Start.X
+					dy := pill.End.Y - pill.Start.Y
+					length := math.Sqrt(float64(dx*dx + dy*dy))
+					h.UI.PillLengthSlider.SetValue(length)
+					h.UI.PillLengthContainer.Show()
+					h.UI.StatusLabel.SetText("Pill selected. Use slider to adjust length or drag to move.")
+				} else {
+					h.UI.StatusLabel.SetText("Shape selected. Drag to move.")
+				}
+				
+				h.UI.Canvas.Refresh()
+				return
+			}
+		}
+		
+		h.UI.StatusLabel.SetText("No shape selected.")
+		return
+	}
 	
 	if h.UI.State.CurrentAction == "polygon" && ev.Button == desktop.MouseButtonPrimary {
-
+		
 		if len(h.PolyPoints) == 0 {
 			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
 			h.UI.StatusLabel.SetText("Creating polygon... Click to add points, press Enter to finish")
 		} else {
-	
 			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
 			if len(h.PolyPoints) >= 3 {
-		
-				poly := models.NewPolygon(h.PolyPoints, color.RGBA{0, 0, 0, 255}, 1)
-		
+				poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
 				h.UI.State.CurrentShape = poly
 				h.UI.Canvas.Refresh()
 			}
@@ -69,31 +107,83 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 		return
 	}
 	
+	
+	if h.UI.State.CurrentAction == "pill" && ev.Button == desktop.MouseButtonPrimary {
+		
+		if pill, isPill := h.UI.State.CurrentShape.(*models.Pill); isPill {
+			if pill.Step == 1 {
+				
+				dx := adjustedPoint.X - pill.Start.X
+				dy := adjustedPoint.Y - pill.Start.Y
+				pill.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
+				pill.Step = 2
+				
+				
+				h.UI.PillLengthContainer.Show()
+				h.UI.PillLengthSlider.SetValue(float64(pill.Radius * 4)) 
+				
+				
+				if dx != 0 || dy != 0 {
+					length := float64(h.UI.PillLengthSlider.Value)
+					distance := math.Sqrt(float64(dx*dx + dy*dy))
+					dirX := float64(dx) / distance
+					dirY := float64(dy) / distance
+					pill.End.X = pill.Start.X + int(dirX * length)
+					pill.End.Y = pill.Start.Y + int(dirY * length)
+				} else {
+					
+					pill.End.X = pill.Start.X + int(h.UI.PillLengthSlider.Value)
+					pill.End.Y = pill.Start.Y
+				}
+				
+				h.UI.StatusLabel.SetText("Pill radius set. Use slider to adjust length, click to finalize.")
+				h.UI.Canvas.Refresh()
+				return
+			} else if pill.Step == 2 {
+				
+				pill.Step = 3
+				
+				
+				h.UI.State.Shapes = append(h.UI.State.Shapes, pill)
+				h.UI.State.CurrentShape = nil
+				h.UI.StatusLabel.SetText("Pill added")
+				h.UI.Canvas.Refresh()
+				return
+			}
+		} else {
+			
+			pill := models.NewPill(adjustedPoint, 5, h.UI.State.CurrentColor)
+			h.UI.State.CurrentShape = pill
+			h.UI.StatusLabel.SetText("Pill started. Click to set radius.")
+			h.UI.Canvas.Refresh()
+			return
+		}
+	}
+	
 	h.IsDrawing = true
 	
 	switch h.UI.State.CurrentAction {
 	case "line":
-
 		thickness := 1
 		if h.UI.State.PenType == "brush" {
 			thickness = h.UI.State.BrushThickness 
 		}
-
+		
 		line := models.NewLine(
 			h.StartPoint,
 			h.StartPoint, 
-			color.RGBA{0, 0, 0, 255},
+			h.UI.State.CurrentColor, 
 			thickness,
 			h.UI.State.PenType,
 		)
 		h.UI.State.CurrentShape = line
 		h.UI.StatusLabel.SetText("Drawing line... Release to complete")
-
+		
 	case "circle":
 		circle := models.NewCircle(
 			h.StartPoint,
 			1, 
-			color.RGBA{0, 0, 0, 255},
+			h.UI.State.CurrentColor, 
 		)
 		h.UI.State.CurrentShape = circle
 		h.UI.StatusLabel.SetText("Drawing circle... Release to complete")
@@ -101,22 +191,28 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 }
 
 
+
 func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
+	
+	if h.IsMoving && h.UI.State.SelectedShape != nil {
+		h.IsMoving = false
+		h.UI.StatusLabel.SetText("Shape moved.")
+		h.UI.Canvas.Refresh()
+		return
+	}
+
 	if !h.IsDrawing || h.UI.State.CurrentAction == "polygon" {
 		return
 	}
 	
-	x, y := int(ev.Position.X), int(ev.Position.Y)
-	h.CurrentPoint = models.Point{X: x, Y: y}
-	
+	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
 	
 	if h.UI.State.CurrentShape != nil {
-
 		h.UI.State.Shapes = append(h.UI.State.Shapes, h.UI.State.CurrentShape)
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
 		h.UI.Canvas.Refresh()
-
+		
 		switch h.UI.State.CurrentAction {
 		case "line":
 			h.UI.StatusLabel.SetText("Line added")
@@ -127,40 +223,68 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 }
 
 
+
+
 func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
-	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
+	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
+	
+	
+	if h.IsMoving && h.UI.State.SelectedShape != nil {
+		
+		deltaX := h.CurrentPoint.X - h.MoveStartX
+		deltaY := h.CurrentPoint.Y - h.MoveStartY
+		
+		
+		if deltaX != 0 || deltaY != 0 {
+			h.UI.State.SelectedShape.Move(deltaX, deltaY)
+			
+			
+			h.MoveStartX = h.CurrentPoint.X
+			h.MoveStartY = h.CurrentPoint.Y
+			
+			h.UI.Canvas.Refresh()
+		}
 		return
 	}
 	
-	x, y := int(ev.Position.X), int(ev.Position.Y)
-	h.CurrentPoint = models.Point{X: x, Y: y}
+	
+	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
+		return
+	}
 	
 	switch shape := h.UI.State.CurrentShape.(type) {
 	case *models.Line:
 		shape.End = h.CurrentPoint
 		h.UI.Canvas.Refresh()
-
+		
 	case *models.Circle:
-
-		dx := x - shape.Center.X
-		dy := y - shape.Center.Y
+		dx := h.CurrentPoint.X - shape.Center.X
+		dy := h.CurrentPoint.Y - shape.Center.Y
 		shape.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
 		h.UI.Canvas.Refresh()
+		
+	case *models.Pill:
+		if shape.Step == 1 {
+			return
+		} else if shape.Step == 2 {
+			shape.End = h.CurrentPoint
+			h.UI.Canvas.Refresh()
+		}
 	}
 }
 
 
 func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
 	if ev.Name == fyne.KeyReturn && h.UI.State.CurrentAction == "polygon" && len(h.PolyPoints) >= 3 {
-
-		poly := models.NewPolygon(h.PolyPoints, color.RGBA{0, 0, 0, 255}, 1)
+		
+		poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
 		h.UI.State.Shapes = append(h.UI.State.Shapes, poly)
 		h.PolyPoints = nil
 		h.UI.State.CurrentShape = nil
 		h.UI.Canvas.Refresh()
 		h.UI.StatusLabel.SetText("Polygon added")
 	} else if ev.Name == fyne.KeyEscape {
-
+		
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
 		h.PolyPoints = nil
@@ -182,6 +306,11 @@ func (h *MouseHandler) Dragged(ev *fyne.DragEvent) {
 
 func (h *MouseHandler) DragEnd() {
 	
+	if h.IsMoving && h.UI.State.SelectedShape != nil {
+		h.IsMoving = false
+		h.UI.StatusLabel.SetText("Shape moved.")
+		h.UI.Canvas.Refresh()
+	}
 }
 
 
@@ -192,7 +321,7 @@ func (h *MouseHandler) Tapped(ev *fyne.PointEvent) {
 	})
 	
 	
-	if h.UI.State.CurrentAction == "polygon" {
+	if h.UI.State.CurrentAction == "polygon" || h.UI.State.CurrentAction == "pill" {
 		return
 	}
 	
@@ -210,4 +339,33 @@ func (h *MouseHandler) TappedSecondary(ev *fyne.PointEvent) {
 	h.IsDrawing = false
 	h.UI.Canvas.Refresh()
 	h.UI.StatusLabel.SetText("Drawing canceled")
+}
+
+
+
+func (h *MouseHandler) adjustMousePosition(ev fyne.PointEvent) models.Point {
+	
+	
+	x := int(ev.Position.X)
+	y := int(ev.Position.Y)
+	
+	
+	canvasSize := h.UI.Canvas.Size()
+	maxX := int(canvasSize.Width) - 1
+	maxY := int(canvasSize.Height) - 1
+	
+	
+	if x < 0 {
+		x = 0
+	} else if x > maxX {
+		x = maxX
+	}
+	
+	if y < 0 {
+		y = 0
+	} else if y > maxY {
+		y = maxY
+	}
+	
+	return models.Point{X: x, Y: y}
 }
