@@ -44,6 +44,7 @@ func (h *MouseHandler) Cursor() desktop.Cursor {
 
 
 
+
 func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	adjustedPoint := h.adjustMousePosition(ev.PointEvent)
 	h.StartPoint = adjustedPoint
@@ -55,12 +56,9 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
 			h.UI.StatusLabel.SetText("Creating polygon... Click to add points, press Enter to finish")
 		} else {
-			
 			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
 			if len(h.PolyPoints) >= 3 {
-				
 				poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
-				
 				h.UI.State.CurrentShape = poly
 				h.UI.Canvas.Refresh()
 			}
@@ -69,11 +67,45 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 		return
 	}
 	
+	
+	if h.UI.State.CurrentAction == "pill" && ev.Button == desktop.MouseButtonPrimary {
+		
+		if pill, isPill := h.UI.State.CurrentShape.(*models.Pill); isPill {
+			if pill.Step == 1 {
+				
+				dx := adjustedPoint.X - pill.Start.X
+				dy := adjustedPoint.Y - pill.Start.Y
+				pill.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
+				pill.Step = 2
+				h.UI.StatusLabel.SetText("Pill radius set. Click to place the second end.")
+				h.UI.Canvas.Refresh()
+				return
+			} else if pill.Step == 2 {
+				
+				pill.End = adjustedPoint
+				pill.Step = 3
+				
+				
+				h.UI.State.Shapes = append(h.UI.State.Shapes, pill)
+				h.UI.State.CurrentShape = nil
+				h.UI.StatusLabel.SetText("Pill added")
+				h.UI.Canvas.Refresh()
+				return
+			}
+		} else {
+			
+			pill := models.NewPill(adjustedPoint, 5, h.UI.State.CurrentColor)
+			h.UI.State.CurrentShape = pill
+			h.UI.StatusLabel.SetText("Pill started. Click to set radius.")
+			h.UI.Canvas.Refresh()
+			return
+		}
+	}
+	
 	h.IsDrawing = true
 	
 	switch h.UI.State.CurrentAction {
 	case "line":
-		
 		thickness := 1
 		if h.UI.State.PenType == "brush" {
 			thickness = h.UI.State.BrushThickness 
@@ -128,6 +160,7 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 
 
 
+
 func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
 		return
@@ -146,6 +179,17 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		dy := h.CurrentPoint.Y - shape.Center.Y
 		shape.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
 		h.UI.Canvas.Refresh()
+		
+	case *models.Pill:
+		
+		if shape.Step == 1 {
+			
+			return
+		} else if shape.Step == 2 {
+			
+			shape.End = h.CurrentPoint
+			h.UI.Canvas.Refresh()
+		}
 	}
 }
 

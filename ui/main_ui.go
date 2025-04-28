@@ -67,6 +67,12 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.StatusLabel.SetText("Polygon tool selected")
 	})
 
+	pillBtn := widget.NewButton("Pill", func() {
+		ui.State.CurrentAction = "pill"
+		ui.CurrentToolText.SetText("Current tool: Pill")
+		ui.StatusLabel.SetText("Pill tool selected: Click to place first end, then set radius, then place second end")
+	})
+
 	selectBtn := widget.NewButton("Select", func() {
 		ui.State.CurrentAction = "select"
 		ui.CurrentToolText.SetText("Current tool: Select")
@@ -274,6 +280,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		widget.NewLabel("Drawing Tools:"),
 		lineBtn,
 		circleBtn,
+		pillBtn,
 		polygonBtn,
 		selectBtn,
 		widget.NewSeparator(),
