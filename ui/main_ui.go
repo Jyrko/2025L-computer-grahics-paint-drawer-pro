@@ -42,7 +42,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 	})
 
 	
-	ui.Canvas.SetMinSize(fyne.NewSize(400, 300))
+	ui.Canvas.SetMinSize(fyne.NewSize(600, 500))
 
 	
 	ui.StatusLabel = widget.NewLabel("Ready")
@@ -341,14 +341,15 @@ func (d *buttonBackgroundLayout) MinSize(objects []fyne.CanvasObject) fyne.Size 
 func (ui *MainUI) renderCanvas(w, h int) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
+	
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
 			img.Set(x, y, color.White)
 		}
 	}
 
+	
 	for _, shape := range ui.State.Shapes {
-
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
@@ -368,8 +369,8 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
+	
 	if ui.State.CurrentShape != nil {
-
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
@@ -389,5 +390,63 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
+	
+	if ui.State.CurrentAction == "select" && ui.State.SelectedShape != nil {
+		
+		controlPoints := ui.State.SelectedShape.GetControlPoints()
+		
+		
+		indicatorColor := color.RGBA{0, 119, 255, 255} 
+		
+		
+		canvas := make([][]color.Color, h)
+		for j := range canvas {
+			canvas[j] = make([]color.Color, w)
+		}
+		
+		
+		for _, point := range controlPoints {
+			drawSelectionIndicator(canvas, point.X, point.Y, 5, indicatorColor)
+		}
+		
+		
+		for x := 0; x < w; x++ {
+			for y := 0; y < h; y++ {
+				if canvas[y][x] != nil {
+					img.Set(x, y, canvas[y][x])
+				}
+			}
+		}
+	}
+
 	return img
+}
+
+
+func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Color) {
+	halfSize := size / 2
+	
+	
+	if len(canvas) == 0 || len(canvas[0]) == 0 {
+		return
+	}
+	
+	
+	for dy := -halfSize; dy <= halfSize; dy++ {
+		for dx := -halfSize; dx <= halfSize; dx++ {
+			
+			px := x + dx
+			py := y + dy
+			
+			
+			if py >= 0 && py < len(canvas) && px >= 0 && px < len(canvas[0]) {
+				
+				if dx == 0 && dy == 0 {
+					canvas[py][px] = c
+				} else if dx == -halfSize || dx == halfSize || dy == -halfSize || dy == halfSize {
+					canvas[py][px] = c
+				}
+			}
+		}
+	}
 }

@@ -3,6 +3,7 @@ package models
 import (
 	"image/color"
 	"math"
+	"paint-drawer-pro/algorithms"
 )
 
 
@@ -28,12 +29,11 @@ func NewPill(start Point, radius int, color color.Color) *Pill {
 
 func (p *Pill) Draw(canvas [][]color.Color, antiAliasing bool) {
 	
-	if p.Step == 1 {
-		
+	if p.Step == 1 {	
 		drawMidpointCircle(canvas, p.Start.X, p.Start.Y, 5, p.Color)
 		return
 	}
-
+	
 	
 	if p.Step == 2 {
 		if antiAliasing {
@@ -50,7 +50,7 @@ func (p *Pill) Draw(canvas [][]color.Color, antiAliasing bool) {
 	length := math.Sqrt(float64(dx*dx + dy*dy))
 	
 	
-	if length < float64(2*p.Radius) {
+	if length < float64(p.Radius) {
 		if antiAliasing {
 			drawXiaolinWuCircle(canvas, p.Start.X, p.Start.Y, p.Radius, p.Color)
 		} else {
@@ -58,73 +58,135 @@ func (p *Pill) Draw(canvas [][]color.Color, antiAliasing bool) {
 		}
 		return
 	}
-
+	
 	
 	dirX := float64(dx) / length
 	dirY := float64(dy) / length
-
+	
 	
 	perpX := -dirY
 	perpY := dirX
 
 	
-	if antiAliasing {
-		drawXiaolinWuCircle(canvas, p.Start.X, p.Start.Y, p.Radius, p.Color)
-	} else {
-		drawMidpointCircle(canvas, p.Start.X, p.Start.Y, p.Radius, p.Color)
+	
+	rectStartX := p.Start.X + int(dirX*float64(p.Radius))
+	rectStartY := p.Start.Y + int(dirY*float64(p.Radius))
+	
+	
+	rectEndX := p.End.X - int(dirX*float64(p.Radius))
+	rectEndY := p.End.Y - int(dirY*float64(p.Radius))
+	
+	
+	topLeft := Point{
+		X: rectStartX + int(perpX*float64(p.Radius)),
+		Y: rectStartY + int(perpY*float64(p.Radius)),
 	}
+	
+	bottomLeft := Point{
+		X: rectStartX - int(perpX*float64(p.Radius)),
+		Y: rectStartY - int(perpY*float64(p.Radius)),
+	}
+	
+	topRight := Point{
+		X: rectEndX + int(perpX*float64(p.Radius)),
+		Y: rectEndY + int(perpY*float64(p.Radius)),
+	}
+	
+	bottomRight := Point{
+		X: rectEndX - int(perpX*float64(p.Radius)),
+		Y: rectEndY - int(perpY*float64(p.Radius)),
+	}
+	
+	
+	minX := min(min(topLeft.X, topRight.X), min(bottomLeft.X, bottomRight.X))
+	maxX := max(max(topLeft.X, topRight.X), max(bottomLeft.X, bottomRight.X))
+	minY := min(min(topLeft.Y, topRight.Y), min(bottomLeft.Y, bottomRight.Y))
+	maxY := max(max(topLeft.Y, topRight.Y), max(bottomLeft.Y, bottomRight.Y))
 
 	
-	if antiAliasing {
-		drawXiaolinWuCircle(canvas, p.End.X, p.End.Y, p.Radius, p.Color)
-	} else {
-		drawMidpointCircle(canvas, p.End.X, p.End.Y, p.Radius, p.Color)
-	}
-
-	
-	
-	x1 := int(float64(p.Start.X) + perpX*float64(p.Radius))
-	y1 := int(float64(p.Start.Y) + perpY*float64(p.Radius))
-	
-	x2 := int(float64(p.Start.X) - perpX*float64(p.Radius))
-	y2 := int(float64(p.Start.Y) - perpY*float64(p.Radius))
-	
-	x3 := int(float64(p.End.X) + perpX*float64(p.Radius))
-	y3 := int(float64(p.End.Y) + perpY*float64(p.Radius))
-	
-	x4 := int(float64(p.End.X) - perpX*float64(p.Radius))
-	y4 := int(float64(p.End.Y) - perpY*float64(p.Radius))
-	
-	
-	if antiAliasing {
-		drawXiaolinWuLine(canvas, x1, y1, x3, y3, p.Color)
-		drawXiaolinWuLine(canvas, x2, y2, x4, y4, p.Color)
-	} else {
-		drawMidpointLine(canvas, x1, y1, x3, y3, p.Color)
-		drawMidpointLine(canvas, x2, y2, x4, y4, p.Color)
-	}
-	
-	
-	
-	
-	steps := int(length) * 2
-	for i := 0; i < steps; i++ {
-		t := float64(i) / float64(steps)
-		pointX := int(float64(p.Start.X) + dirX*t*length)
-		pointY := int(float64(p.Start.Y) + dirY*t*length)
-		
-		
-		x1 := int(float64(pointX) + perpX*float64(p.Radius))
-		y1 := int(float64(pointY) + perpY*float64(p.Radius))
-		x2 := int(float64(pointX) - perpX*float64(p.Radius))
-		y2 := int(float64(pointY) - perpY*float64(p.Radius))
-		
-		if antiAliasing {
-			drawXiaolinWuLine(canvas, x1, y1, x2, y2, p.Color)
-		} else {
-			drawMidpointLine(canvas, x1, y1, x2, y2, p.Color)
+	for y := minY; y <= maxY; y++ {
+		for x := minX; x <= maxX; x++ {
+			
+			if isPointInRect(Point{X: x, Y: y}, topLeft, topRight, bottomRight, bottomLeft) {
+				algorithms.SetPixel(canvas, x, y, p.Color) 
+			}
 		}
 	}
+	
+	
+	drawFilledSemicircle(canvas, p.Start.X, p.Start.Y, p.Radius, dirX, dirY, p.Color, antiAliasing)
+	
+	
+	drawFilledSemicircle(canvas, p.End.X, p.End.Y, p.Radius, -dirX, -dirY, p.Color, antiAliasing)
+}
+
+
+func isPointInRect(p, a, b, c, d Point) bool {
+	
+	ab := crossProduct(b.X-a.X, b.Y-a.Y, p.X-a.X, p.Y-a.Y)
+	bc := crossProduct(c.X-b.X, c.Y-b.Y, p.X-b.X, p.Y-b.Y)
+	cd := crossProduct(d.X-c.X, d.Y-c.Y, p.X-c.X, p.Y-c.Y)
+	da := crossProduct(a.X-d.X, a.Y-d.Y, p.X-d.X, p.Y-d.Y)
+	
+	
+	return (ab >= 0 && bc >= 0 && cd >= 0 && da >= 0) || (ab <= 0 && bc <= 0 && cd <= 0 && da <= 0)
+}
+
+
+func crossProduct(x1, y1, x2, y2 int) int {
+	return x1*y2 - y1*x2
+}
+
+
+func drawFilledSemicircle(canvas [][]color.Color, centerX, centerY, radius int, dirX, dirY float64, c color.Color, antiAliasing bool) {
+	
+	for y := centerY - radius; y <= centerY + radius; y++ {
+		for x := centerX - radius; x <= centerX + radius; x++ {
+			
+			if y < 0 || x < 0 || y >= len(canvas) || x >= len(canvas[0]) {
+				continue
+			}
+			
+			
+			vx := float64(x - centerX)
+			vy := float64(y - centerY)
+			
+			
+			distSq := vx*vx + vy*vy
+			if distSq > float64(radius*radius) {
+				continue
+			}
+			
+			
+			dotProduct := vx*dirX + vy*dirY
+			
+			
+			if dotProduct >= 0 {
+				algorithms.SetPixel(canvas, x, y, c) 
+			}
+		}
+	}
+	
+	
+	if antiAliasing {
+		drawXiaolinWuCircle(canvas, centerX, centerY, radius, c)
+	} else {
+		drawMidpointCircle(canvas, centerX, centerY, radius, c)
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 
@@ -156,17 +218,14 @@ func (p *Pill) Contains(point Point) bool {
 		perpY := dirX
 		
 		
-		vx := point.X - p.Start.X
-		vy := point.Y - p.Start.Y
-		
+		vx := float64(point.X - p.Start.X)
+		vy := float64(point.Y - p.Start.Y)
 		
 		projDir := vx*dirX + vy*dirY
-		
 		
 		if projDir >= 0 && projDir <= length {
 			
 			projPerp := math.Abs(vx*perpX + vy*perpY)
-			
 			
 			return projPerp <= float64(p.Radius+5)
 		}

@@ -20,6 +20,9 @@ type MouseHandler struct {
 	IsDrawing    bool
 	LastPoint    models.Point
 	PolyPoints   []models.Point
+	IsMoving     bool      
+	MoveStartX   int       
+	MoveStartY   int       
 }
 
 
@@ -49,6 +52,30 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	adjustedPoint := h.adjustMousePosition(ev.PointEvent)
 	h.StartPoint = adjustedPoint
 	h.CurrentPoint = adjustedPoint
+	
+	
+	if h.UI.State.CurrentAction == "select" && ev.Button == desktop.MouseButtonPrimary {
+		
+		h.UI.State.SelectedShape = nil
+		
+		
+		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
+			shape := h.UI.State.Shapes[i]
+			if shape.Contains(adjustedPoint) {
+				h.UI.State.SelectedShape = shape
+				h.IsMoving = true
+				h.MoveStartX = adjustedPoint.X
+				h.MoveStartY = adjustedPoint.Y
+				h.UI.StatusLabel.SetText("Shape selected. Drag to move.")
+				h.UI.Canvas.Refresh()
+				return
+			}
+		}
+		
+		
+		h.UI.StatusLabel.SetText("No shape selected.")
+		return
+	}
 	
 	if h.UI.State.CurrentAction == "polygon" && ev.Button == desktop.MouseButtonPrimary {
 		
@@ -135,15 +162,21 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 
 
 func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
+	
+	if h.IsMoving && h.UI.State.SelectedShape != nil {
+		h.IsMoving = false
+		h.UI.StatusLabel.SetText("Shape moved.")
+		h.UI.Canvas.Refresh()
+		return
+	}
+
 	if !h.IsDrawing || h.UI.State.CurrentAction == "polygon" {
 		return
 	}
 	
 	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
 	
-	
 	if h.UI.State.CurrentShape != nil {
-		
 		h.UI.State.Shapes = append(h.UI.State.Shapes, h.UI.State.CurrentShape)
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
@@ -162,11 +195,31 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 
 
 func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
-	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
+	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
+	
+	
+	if h.IsMoving && h.UI.State.SelectedShape != nil {
+		
+		deltaX := h.CurrentPoint.X - h.MoveStartX
+		deltaY := h.CurrentPoint.Y - h.MoveStartY
+		
+		
+		if deltaX != 0 || deltaY != 0 {
+			h.UI.State.SelectedShape.Move(deltaX, deltaY)
+			
+			
+			h.MoveStartX = h.CurrentPoint.X
+			h.MoveStartY = h.CurrentPoint.Y
+			
+			h.UI.Canvas.Refresh()
+		}
 		return
 	}
 	
-	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
+	
+	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
+		return
+	}
 	
 	switch shape := h.UI.State.CurrentShape.(type) {
 	case *models.Line:
@@ -174,19 +227,15 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		h.UI.Canvas.Refresh()
 		
 	case *models.Circle:
-		
 		dx := h.CurrentPoint.X - shape.Center.X
 		dy := h.CurrentPoint.Y - shape.Center.Y
 		shape.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
 		h.UI.Canvas.Refresh()
 		
 	case *models.Pill:
-		
 		if shape.Step == 1 {
-			
 			return
 		} else if shape.Step == 2 {
-			
 			shape.End = h.CurrentPoint
 			h.UI.Canvas.Refresh()
 		}
@@ -226,6 +275,11 @@ func (h *MouseHandler) Dragged(ev *fyne.DragEvent) {
 
 func (h *MouseHandler) DragEnd() {
 	
+	if h.IsMoving && h.UI.State.SelectedShape != nil {
+		h.IsMoving = false
+		h.UI.StatusLabel.SetText("Shape moved.")
+		h.UI.Canvas.Refresh()
+	}
 }
 
 
@@ -236,7 +290,7 @@ func (h *MouseHandler) Tapped(ev *fyne.PointEvent) {
 	})
 	
 	
-	if h.UI.State.CurrentAction == "polygon" {
+	if h.UI.State.CurrentAction == "polygon" || h.UI.State.CurrentAction == "pill" {
 		return
 	}
 	
