@@ -68,8 +68,10 @@ func NewMainUI(window fyne.Window) *MainUI {
 		return ui.renderCanvas(w, h)
 	})
 
-	
+	// Set both min size and a fixed size for the canvas to ensure proper positioning
 	ui.Canvas.SetMinSize(fyne.NewSize(600, 500))
+	// Make the canvas resize with the window
+	ui.Canvas.Resize(fyne.NewSize(600, 500))
 
 	
 	ui.StatusLabel = widget.NewLabel("Ready")
@@ -406,157 +408,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		container.NewHBox(fillColorBtn, loadImageBtn),
 	)
 	
-	colorLabel := widget.NewLabel("Color:")
-
-	
-	colorPreview := canvas.NewRectangle(ui.State.CurrentColor)
-	colorPreview.SetMinSize(fyne.NewSize(30, 20))
-
-	
-	blackColor := color.RGBA{0, 0, 0, 255}
-	redColor := color.RGBA{255, 0, 0, 255}
-	greenColor := color.RGBA{0, 255, 0, 255}
-	blueColor := color.RGBA{0, 0, 255, 255}
-
-	
-	blackBtn := widget.NewButton("", func() {
-		ui.State.CurrentColor = blackColor
-		colorPreview.FillColor = ui.State.CurrentColor
-		colorPreview.Refresh()
-		ui.StatusLabel.SetText("Black color selected")
-	})
-	blackBtn.Importance = widget.LowImportance
-	
-	blackRect := canvas.NewRectangle(blackColor)
-	blackRect.SetMinSize(fyne.NewSize(20, 20))
-	blackBtnContainer := container.NewHBox(blackRect, blackBtn)
-
-	
-	redBtn := widget.NewButton("", func() {
-		ui.State.CurrentColor = redColor
-		colorPreview.FillColor = ui.State.CurrentColor
-		colorPreview.Refresh()
-		ui.StatusLabel.SetText("Red color selected")
-	})
-	redBtn.Importance = widget.LowImportance
-	
-	redRect := canvas.NewRectangle(redColor)
-	redRect.SetMinSize(fyne.NewSize(20, 20))
-	redBtnContainer := container.NewHBox(redRect, redBtn)
-
-	
-	greenBtn := widget.NewButton("", func() {
-		ui.State.CurrentColor = greenColor
-		colorPreview.FillColor = ui.State.CurrentColor
-		colorPreview.Refresh()
-		ui.StatusLabel.SetText("Green color selected")
-	})
-	greenBtn.Importance = widget.LowImportance
-	
-	greenRect := canvas.NewRectangle(greenColor)
-	greenRect.SetMinSize(fyne.NewSize(20, 20))
-	greenBtnContainer := container.NewHBox(greenRect, greenBtn)
-
-	
-	blueBtn := widget.NewButton("", func() {
-		ui.State.CurrentColor = blueColor
-		colorPreview.FillColor = ui.State.CurrentColor
-		colorPreview.Refresh()
-		ui.StatusLabel.SetText("Blue color selected")
-	})
-	blueBtn.Importance = widget.LowImportance
-	
-	blueRect := canvas.NewRectangle(blueColor)
-	blueRect.SetMinSize(fyne.NewSize(20, 20))
-	blueBtnContainer := container.NewHBox(blueRect, blueBtn)
-
-	
-	customColorBtn := widget.NewButton("Custom...", func() {
-		
-		rSlider := widget.NewSlider(0, 255)
-		gSlider := widget.NewSlider(0, 255)
-		bSlider := widget.NewSlider(0, 255)
-
-		
-		rSlider.Value = float64(ui.State.CurrentColor.R)
-		gSlider.Value = float64(ui.State.CurrentColor.G)
-		bSlider.Value = float64(ui.State.CurrentColor.B)
-
-		
-		preview := canvas.NewRectangle(ui.State.CurrentColor)
-		preview.SetMinSize(fyne.NewSize(100, 60))
-
-		
-		rLabel := widget.NewLabel(fmt.Sprintf("R: %d", ui.State.CurrentColor.R))
-		gLabel := widget.NewLabel(fmt.Sprintf("G: %d", ui.State.CurrentColor.G))
-		bLabel := widget.NewLabel(fmt.Sprintf("B: %d", ui.State.CurrentColor.B))
-
-		
-		updateColor := func() {
-			r := uint8(rSlider.Value)
-			g := uint8(gSlider.Value)
-			b := uint8(bSlider.Value)
-			newColor := color.RGBA{r, g, b, 255}
-
-			
-			preview.FillColor = newColor
-			preview.Refresh()
-
-			
-			rLabel.SetText(fmt.Sprintf("R: %d", r))
-			gLabel.SetText(fmt.Sprintf("G: %d", g))
-			bLabel.SetText(fmt.Sprintf("B: %d", b))
-		}
-
-		
-		rSlider.OnChanged = func(value float64) {
-			updateColor()
-		}
-		gSlider.OnChanged = func(value float64) {
-			updateColor()
-		}
-		bSlider.OnChanged = func(value float64) {
-			updateColor()
-		}
-
-		
-		content := container.NewVBox(
-			preview,
-			widget.NewSeparator(),
-			container.NewHBox(widget.NewLabel("Red:"), rLabel),
-			rSlider,
-			container.NewHBox(widget.NewLabel("Green:"), gLabel),
-			gSlider,
-			container.NewHBox(widget.NewLabel("Blue:"), bLabel),
-			bSlider,
-		)
-
-		
-		colorDialog := dialog.NewCustom("Select Color", "Apply", content, window)
-		colorDialog.SetOnClosed(func() {
-			r := uint8(rSlider.Value)
-			g := uint8(gSlider.Value)
-			b := uint8(bSlider.Value)
-			ui.State.CurrentColor = color.RGBA{r, g, b, 255}
-			colorPreview.FillColor = ui.State.CurrentColor
-			colorPreview.Refresh()
-			ui.StatusLabel.SetText(fmt.Sprintf("Custom color selected (R:%d, G:%d, B:%d)", r, g, b))
-		})
-		colorDialog.Show()
-	})
-
-	
-	colorButtons := container.NewGridWithColumns(2,
-		blackBtnContainer, redBtnContainer, 
-		greenBtnContainer, blueBtnContainer)
-
-	colorContainer := container.NewVBox(
-		container.NewHBox(colorLabel, colorPreview),
-		colorButtons,
-		customColorBtn,
-	)
-
-	
 	ui.ToolsContainer = container.NewVBox(
 		widget.NewLabel("Drawing Tools:"),
 		lineBtn,
@@ -582,8 +433,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		widget.NewSeparator(),
 		fillContainer,
 		widget.NewSeparator(),
-		colorLabel,
-		colorContainer,
 		widget.NewSeparator(),
 		ui.CurrentToolText,
 	)
@@ -667,9 +516,14 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 			canvas[j] = make([]color.Color, w)
 		}
 		
-		
-		for _, point := range controlPoints {
-			drawSelectionIndicator(canvas, point.X, point.Y, 5, indicatorColor)
+		// Special handling for rectangles to show resize handles
+		if rect, isRect := ui.State.SelectedShape.(*models.Rectangle); isRect {
+			drawRectangleSelectionHandles(canvas, rect, indicatorColor)
+		} else {
+			// Regular selection indicators for other shapes
+			for _, point := range controlPoints {
+				drawSelectionIndicator(canvas, point.X, point.Y, 5, indicatorColor)
+			}
 		}
 		
 		
@@ -711,6 +565,15 @@ func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Colo
 				}
 			}
 		}
+	}
+}
+
+// drawRectangleSelectionHandles draws handles at the corners of a selected rectangle
+func drawRectangleSelectionHandles(canvas [][]color.Color, rect *models.Rectangle, c color.Color) {
+	// Draw corner handles with larger size for easier grabbing
+	points := rect.GetControlPoints()
+	for _, point := range points {
+		drawSelectionIndicator(canvas, point.X, point.Y, 8, c)
 	}
 }
 

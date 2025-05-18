@@ -296,3 +296,66 @@ func (r *Rectangle) Clone() Shape {
 	
 	return newRect
 }
+
+// GetResizePointAt determines which resize point (if any) is at the given coordinates
+func (r *Rectangle) GetResizePointAt(p Point) ResizePointType {
+	const selectionRadius = 10 // Pixel radius for resize handle selection
+
+	// Check each corner
+	corners := r.GetControlPoints()
+	
+	// Check top-left corner
+	dx := corners[0].X - p.X
+	dy := corners[0].Y - p.Y
+	if dx*dx+dy*dy <= selectionRadius*selectionRadius {
+		return TopLeft
+	}
+	
+	// Check top-right corner
+	dx = corners[1].X - p.X
+	dy = corners[1].Y - p.Y
+	if dx*dx+dy*dy <= selectionRadius*selectionRadius {
+		return TopRight
+	}
+	
+	// Check bottom-right corner
+	dx = corners[2].X - p.X
+	dy = corners[2].Y - p.Y
+	if dx*dx+dy*dy <= selectionRadius*selectionRadius {
+		return BottomRight
+	}
+	
+	// Check bottom-left corner
+	dx = corners[3].X - p.X
+	dy = corners[3].Y - p.Y
+	if dx*dx+dy*dy <= selectionRadius*selectionRadius {
+		return BottomLeft
+	}
+	
+	return None
+}
+
+// ResizeByCorner resizes the rectangle by moving the specified corner
+func (r *Rectangle) ResizeByCorner(cornerType ResizePointType, newPoint Point) {
+	switch cornerType {
+	case TopLeft:
+		r.TopLeft = newPoint
+	case TopRight:
+		r.TopLeft.Y = newPoint.Y
+		r.BottomRight.X = newPoint.X
+	case BottomRight:
+		r.BottomRight = newPoint
+	case BottomLeft:
+		r.TopLeft.X = newPoint.X
+		r.BottomRight.Y = newPoint.Y
+	}
+	
+	// Normalize rectangle to ensure TopLeft is actually top-left and BottomRight is bottom-right
+	if r.TopLeft.X > r.BottomRight.X {
+		r.TopLeft.X, r.BottomRight.X = r.BottomRight.X, r.TopLeft.X
+	}
+	
+	if r.TopLeft.Y > r.BottomRight.Y {
+		r.TopLeft.Y, r.BottomRight.Y = r.BottomRight.Y, r.TopLeft.Y
+	}
+}

@@ -11,18 +11,30 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// ResizePoint represents which control point is being dragged
+type ResizePoint int
+
+const (
+	None ResizePoint = iota
+	TopLeft
+	TopRight
+	BottomRight
+	BottomLeft
+)
 
 type MouseHandler struct {
 	widget.BaseWidget
-	UI           *MainUI
-	StartPoint   models.Point
-	CurrentPoint models.Point
-	IsDrawing    bool
-	LastPoint    models.Point
-	PolyPoints   []models.Point
-	IsMoving     bool      
-	MoveStartX   int       
-	MoveStartY   int       
+	UI                *MainUI
+	StartPoint        models.Point
+	CurrentPoint      models.Point
+	IsDrawing         bool
+	LastPoint         models.Point
+	PolyPoints        []models.Point
+	IsMoving          bool      
+	IsResizing        bool
+	CurrentResizePoint ResizePoint
+	MoveStartX        int       
+	MoveStartY        int       
 }
 
 
@@ -53,14 +65,29 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	h.StartPoint = adjustedPoint
 	h.CurrentPoint = adjustedPoint
 	
+	// Reset resize state
+	h.IsResizing = false
+	h.CurrentResizePoint = None
 	
 	if h.UI.State.CurrentAction == "select" && ev.Button == desktop.MouseButtonPrimary {
+		// Check if we're clicking on a resize handle of the currently selected rectangle
+		if h.UI.State.SelectedShape != nil {
+			if rect, isRect := h.UI.State.SelectedShape.(*models.Rectangle); isRect {
+				resizePoint := rect.GetResizePointAt(adjustedPoint)
+				if resizePoint != models.None {
+					h.IsResizing = true
+					h.CurrentResizePoint = ResizePoint(resizePoint)
+					h.UI.StatusLabel.SetText("Resizing rectangle...")
+					return
+				}
+			}
+		}
 		
+		// If not resizing, proceed with normal selection
 		h.UI.State.SelectedShape = nil
-		
 		h.UI.PillLengthContainer.Hide()
 		
-		
+		// Find if we clicked on a shape
 		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
 			shape := h.UI.State.Shapes[i]
 			if shape.Contains(adjustedPoint) {
@@ -69,7 +96,7 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				h.MoveStartX = adjustedPoint.X
 				h.MoveStartY = adjustedPoint.Y
 				
-				
+				// Handle special case for pill shapes
 				if pill, isPill := shape.(*models.Pill); isPill {
 					dx := pill.End.X - pill.Start.X
 					dy := pill.End.Y - pill.Start.Y
@@ -77,8 +104,8 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 					h.UI.PillLengthSlider.SetValue(length)
 					h.UI.PillLengthContainer.Show()
 					h.UI.StatusLabel.SetText("Pill selected. Use slider to adjust length or drag to move.")
-				} else {
-					h.UI.StatusLabel.SetText("Shape selected. Drag to move.")
+				} else if _, isRect := shape.(*models.Rectangle); isRect {
+					h.UI.StatusLabel.SetText("Rectangle selected. Drag corners to resize or drag center to move. Press Delete to remove.")
 				}
 				
 				h.UI.Canvas.Refresh()
@@ -214,6 +241,14 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 
 func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 	
+	if h.IsResizing && h.UI.State.SelectedShape != nil {
+		h.IsResizing = false
+		h.CurrentResizePoint = None
+		h.UI.StatusLabel.SetText("Rectangle resized.")
+		h.UI.Canvas.Refresh()
+		return
+	}
+	
 	if h.IsMoving && h.UI.State.SelectedShape != nil {
 		h.IsMoving = false
 		h.UI.StatusLabel.SetText("Shape moved.")
@@ -305,7 +340,17 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
 	
+	// Handle resizing of rectangle
+	if h.IsResizing && h.UI.State.SelectedShape != nil {
+		if rect, isRect := h.UI.State.SelectedShape.(*models.Rectangle); isRect {
+			resizePoint := models.ResizePointType(h.CurrentResizePoint)
+			rect.ResizeByCorner(resizePoint, h.CurrentPoint)
+			h.UI.Canvas.Refresh()
+		}
+		return
+	}
 	
+	// Handle moving shapes
 	if h.IsMoving && h.UI.State.SelectedShape != nil {
 		
 		deltaX := h.CurrentPoint.X - h.MoveStartX
@@ -357,6 +402,22 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 
 
 func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
+	// Handle shape deletion with Delete or Backspace keys
+	if (ev.Name == fyne.KeyDelete || ev.Name == fyne.KeyBackspace) && h.UI.State.CurrentAction == "select" && h.UI.State.SelectedShape != nil {
+		// Find and remove the selected shape
+		for i, shape := range h.UI.State.Shapes {
+			if shape == h.UI.State.SelectedShape {
+				// Remove shape from the slice
+				h.UI.State.Shapes = append(h.UI.State.Shapes[:i], h.UI.State.Shapes[i+1:]...)
+				h.UI.State.SelectedShape = nil
+				h.UI.Canvas.Refresh()
+				h.UI.StatusLabel.SetText("Shape deleted")
+				break
+			}
+		}
+		return
+	}
+	
 	if ev.Name == fyne.KeyReturn && h.UI.State.CurrentAction == "polygon" && len(h.PolyPoints) >= 3 {
 		
 		poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
@@ -398,6 +459,14 @@ func (h *MouseHandler) Dragged(ev *fyne.DragEvent) {
 
 func (h *MouseHandler) DragEnd() {
 	
+	if h.IsResizing && h.UI.State.SelectedShape != nil {
+		h.IsResizing = false
+		h.CurrentResizePoint = None
+		h.UI.StatusLabel.SetText("Rectangle resized.")
+		h.UI.Canvas.Refresh()
+		return
+	}
+	
 	if h.IsMoving && h.UI.State.SelectedShape != nil {
 		h.IsMoving = false
 		h.UI.StatusLabel.SetText("Shape moved.")
@@ -436,17 +505,20 @@ func (h *MouseHandler) TappedSecondary(ev *fyne.PointEvent) {
 
 
 func (h *MouseHandler) adjustMousePosition(ev fyne.PointEvent) models.Point {
+	// Get the position of the canvas within the window
+	canvasPos := h.UI.Canvas.Position()
 	
+	// Calculate the position relative to the canvas's position
+	// by subtracting the canvas's position from the absolute mouse position
+	x := int(ev.Position.X - canvasPos.X)
+	y := int(ev.Position.Y - canvasPos.Y)
 	
-	x := int(ev.Position.X)
-	y := int(ev.Position.Y)
-	
-	
+	// Get canvas size for bounds checking
 	canvasSize := h.UI.Canvas.Size()
 	maxX := int(canvasSize.Width) - 1
 	maxY := int(canvasSize.Height) - 1
 	
-	
+	// Constrain to canvas bounds
 	if x < 0 {
 		x = 0
 	} else if x > maxX {
