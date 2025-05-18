@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -37,6 +38,9 @@ func NewMainUI(window fyne.Window) *MainUI {
 			PenType:        "brush",
 			BrushThickness: 3,
 			CurrentColor:   color.RGBA{0, 0, 0, 255}, 
+			FillEnabled:    false,
+			FillColor:      color.RGBA{255, 255, 255, 255},
+			UseImageFill:   false,
 		},
 	}
 
@@ -93,6 +97,13 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.PillLengthContainer.Hide() 
 	})
 
+	rectangleBtn := widget.NewButton("Rectangle", func() {
+		ui.State.CurrentAction = "rectangle"
+		ui.CurrentToolText.SetText("Current tool: Rectangle")
+		ui.StatusLabel.SetText("Rectangle tool selected")
+		ui.PillLengthContainer.Hide() 
+	})
+
 	pillBtn := widget.NewButton("Pill", func() {
 		ui.State.CurrentAction = "pill"
 		ui.CurrentToolText.SetText("Current tool: Pill")
@@ -117,6 +128,94 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.State.Shapes = []models.Shape{}
 		ui.Canvas.Refresh()
 		ui.StatusLabel.SetText("Canvas cleared")
+	})
+	
+	// File save button
+	saveBtn := widget.NewButton("Save", func() {
+		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, ui.Window)
+				return
+			}
+			if writer == nil {
+				return // User cancelled
+			}
+			
+			// Close the writer as we'll use our own file handler
+			writer.Close()
+			
+			// Get the file path
+			filePath := writer.URI().Path()
+			
+			// Save shapes to the file
+			err = ui.SaveShapesToFile(filePath)
+			if err != nil {
+				dialog.ShowError(err, ui.Window)
+				return
+			}
+			
+			ui.StatusLabel.SetText("Drawing saved to file")
+		}, ui.Window)
+		
+		fd.SetFileName("drawing.json")
+		fd.Show()
+	})
+	
+	// File load button
+	loadBtn := widget.NewButton("Load", func() {
+		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, ui.Window)
+				return
+			}
+			if reader == nil {
+				return // User cancelled
+			}
+			
+			// Close the reader as we'll use our own file handler
+			reader.Close()
+			
+			// Get the file path
+			filePath := reader.URI().Path()
+			
+			// Load shapes from the file
+			err = ui.LoadShapesFromFile(filePath)
+			if err != nil {
+				dialog.ShowError(err, ui.Window)
+				return
+			}
+			
+			ui.StatusLabel.SetText("Drawing loaded from file")
+		}, ui.Window)
+		
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
+		fd.Show()
+	})
+	
+	// Clipping button
+	clipBtn := widget.NewButton("Clip Polygon", func() {
+		// Enable only when we have a selected shape that's a polygon
+		if ui.State.SelectedShape == nil {
+			dialog.ShowInformation("Clipping", "Please select a polygon to clip first.", ui.Window)
+			return
+		}
+		
+		selectedPoly, isPolygon := ui.State.SelectedShape.(*models.Polygon)
+		if !isPolygon {
+			dialog.ShowInformation("Clipping", "Only polygons can be clipped. Please select a polygon.", ui.Window)
+			return
+		}
+		
+		// Check if the polygon is convex
+		if !selectedPoly.IsConvex() {
+			dialog.ShowInformation("Clipping", "Only convex polygons can be used for clipping.", ui.Window)
+			return
+		}
+		
+		ui.State.CurrentAction = "clipping"
+		ui.CurrentToolText.SetText("Current tool: Clipping")
+		ui.StatusLabel.SetText("Clipping mode active. Select a polygon to clip against " + 
+			"the current selection.")
 	})
 
 	aaCheck := widget.NewCheck("Anti-aliasing", func(checked bool) {
@@ -158,6 +257,154 @@ func NewMainUI(window fyne.Window) *MainUI {
 		nil, nil, thicknessLabel, thicknessValue, thicknessSlider,
 	)
 
+	// Fill controls
+	fillCheck := widget.NewCheck("Fill Shapes", func(checked bool) {
+		ui.State.FillEnabled = checked
+		ui.StatusLabel.SetText(fmt.Sprintf("Fill %s", map[bool]string{true: "enabled", false: "disabled"}[checked]))
+	})
+	
+	fillColorBtn := widget.NewButton("Fill Color", func() {
+		// Create RGB sliders for fill color
+		rSlider := widget.NewSlider(0, 255)
+		gSlider := widget.NewSlider(0, 255)
+		bSlider := widget.NewSlider(0, 255)
+
+		// Set initial values to current fill color or default
+		fillColor := ui.State.FillColor
+		if fillColor == nil {
+			fillColor = color.RGBA{255, 255, 255, 255}
+		}
+		
+		r, g, b, _ := fillColor.RGBA()
+		rSlider.Value = float64(uint8(r))
+		gSlider.Value = float64(uint8(g))
+		bSlider.Value = float64(uint8(b))
+
+		// Color preview
+		preview := canvas.NewRectangle(fillColor)
+		preview.SetMinSize(fyne.NewSize(100, 60))
+
+		// Labels
+		rLabel := widget.NewLabel(fmt.Sprintf("R: %d", uint8(r)))
+		gLabel := widget.NewLabel(fmt.Sprintf("G: %d", uint8(g)))
+		bLabel := widget.NewLabel(fmt.Sprintf("B: %d", uint8(b)))
+
+		// Update function
+		updateFillColor := func() {
+			r := uint8(rSlider.Value)
+			g := uint8(gSlider.Value)
+			b := uint8(bSlider.Value)
+			newColor := color.RGBA{r, g, b, 255}
+
+			preview.FillColor = newColor
+			preview.Refresh()
+
+			rLabel.SetText(fmt.Sprintf("R: %d", r))
+			gLabel.SetText(fmt.Sprintf("G: %d", g))
+			bLabel.SetText(fmt.Sprintf("B: %d", b))
+			}
+
+		// Slider change handlers
+		rSlider.OnChanged = func(value float64) {
+			updateFillColor()
+		}
+		gSlider.OnChanged = func(value float64) {
+			updateFillColor()
+		}
+		bSlider.OnChanged = func(value float64) {
+			updateFillColor()
+		}
+
+		// Dialog content
+		content := container.NewVBox(
+			preview,
+			widget.NewSeparator(),
+			container.NewHBox(widget.NewLabel("Red:"), rLabel),
+			rSlider,
+			container.NewHBox(widget.NewLabel("Green:"), gLabel),
+			gSlider,
+			container.NewHBox(widget.NewLabel("Blue:"), bLabel),
+			bSlider,
+			)
+
+		// Create and show dialog
+		customDialog := dialog.NewCustom("Choose Fill Color", "Apply", content, ui.Window)
+		customDialog.SetOnClosed(func() {
+			newColor := color.RGBA{
+				R: uint8(rSlider.Value),
+				G: uint8(gSlider.Value),
+				B: uint8(bSlider.Value),
+				A: 255,
+			}
+			ui.State.FillColor = newColor
+			ui.StatusLabel.SetText("Fill color updated")
+			
+			// If a shape is selected, apply the fill color
+			if ui.State.SelectedShape != nil {
+				switch s := ui.State.SelectedShape.(type) {
+				case *models.Polygon:
+					s.SetFillColor(newColor)
+				case *models.Rectangle:
+					s.SetFillColor(newColor)
+				}
+				ui.Canvas.Refresh()
+			}
+		})
+		customDialog.Show()
+	})
+	
+	loadImageBtn := widget.NewButton("Load Fill Image", func() {
+		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, ui.Window)
+				return
+			}
+			if reader == nil {
+				return
+			}
+			
+			imgData, _, err := image.Decode(reader)
+			if err != nil {
+				dialog.ShowError(err, ui.Window)
+				return
+			}
+			
+			reader.Close()
+			
+			bounds := imgData.Bounds()
+			width, height := bounds.Max.X, bounds.Max.Y
+			
+			fillImage := make([][]color.Color, height)
+			for y := 0; y < height; y++ {
+				fillImage[y] = make([]color.Color, width)
+				for x := 0; x < width; x++ {
+					fillImage[y][x] = imgData.At(x, y)
+				}
+			}
+			
+			ui.State.FillImage = fillImage
+			ui.State.UseImageFill = true
+			ui.StatusLabel.SetText("Fill image loaded")
+			
+			// Apply to selected shape if any
+			if ui.State.SelectedShape != nil {
+				switch s := ui.State.SelectedShape.(type) {
+				case *models.Polygon:
+					s.SetFillImage(fillImage)
+				case *models.Rectangle:
+					s.SetFillImage(fillImage)
+				}
+				ui.Canvas.Refresh()
+			}
+		}, ui.Window)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".png", ".jpg", ".jpeg"}))
+		fd.Show()
+	})
+	
+	fillContainer := container.NewVBox(
+		fillCheck,
+		container.NewHBox(fillColorBtn, loadImageBtn),
+	)
 	
 	colorLabel := widget.NewLabel("Color:")
 
@@ -285,8 +532,8 @@ func NewMainUI(window fyne.Window) *MainUI {
 		)
 
 		
-		dialog := dialog.NewCustom("Select Color", "Apply", content, window)
-		dialog.SetOnClosed(func() {
+		colorDialog := dialog.NewCustom("Select Color", "Apply", content, window)
+		colorDialog.SetOnClosed(func() {
 			r := uint8(rSlider.Value)
 			g := uint8(gSlider.Value)
 			b := uint8(bSlider.Value)
@@ -295,7 +542,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			colorPreview.Refresh()
 			ui.StatusLabel.SetText(fmt.Sprintf("Custom color selected (R:%d, G:%d, B:%d)", r, g, b))
 		})
-		dialog.Show()
+		colorDialog.Show()
 	})
 
 	
@@ -316,9 +563,13 @@ func NewMainUI(window fyne.Window) *MainUI {
 		circleBtn,
 		pillBtn,
 		polygonBtn,
+		rectangleBtn,
 		selectBtn,
 		widget.NewSeparator(),
 		clearBtn,
+		saveBtn, // Add save button to the tools container
+		loadBtn, // Add load button to the tools container
+		clipBtn,
 		widget.NewSeparator(),
 		aaCheck,
 		widget.NewSeparator(),
@@ -328,6 +579,8 @@ func NewMainUI(window fyne.Window) *MainUI {
 		thicknessContainer,
 		widget.NewSeparator(),
 		ui.PillLengthContainer, 
+		widget.NewSeparator(),
+		fillContainer,
 		widget.NewSeparator(),
 		colorLabel,
 		colorContainer,
@@ -346,32 +599,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 	)
 
 	return ui
-}
-
-
-type buttonBackgroundLayout struct{}
-
-func (d *buttonBackgroundLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
-	if len(objects) < 2 {
-		return
-	}
-
-	
-	objects[0].Resize(size)
-	objects[0].Move(fyne.NewPos(0, 0))
-
-	
-	objects[1].Resize(size)
-	objects[1].Move(fyne.NewPos(0, 0))
-}
-
-func (d *buttonBackgroundLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
-	if len(objects) < 2 {
-		return fyne.NewSize(20, 20)
-	}
-
-	
-	return objects[1].MinSize()
 }
 
 func (ui *MainUI) renderCanvas(w, h int) image.Image {

@@ -33,6 +33,10 @@ type Polygon struct {
 	Vertices  []Point
 	Color     color.Color
 	Thickness int
+	FillColor color.Color
+	IsFilled  bool
+	FillImage [][]color.Color
+	UseImage  bool
 }
 
 
@@ -44,5 +48,9 @@ type DrawingState struct {
 	AntiAliasing   bool
 	PenType        string 
 	BrushThickness int    
-	CurrentColor   color.RGBA 
+	CurrentColor   color.RGBA
+	FillEnabled    bool
+	FillColor      color.Color
+	FillImage      [][]color.Color
+	UseImageFill   bool 
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	a := app.New()
+	a := app.NewWithID("com.university.paintdrawerpro")
 	w := a.NewWindow("Paint Drawer Pro")
 	w.Resize(fyne.NewSize(800, 600))
 	

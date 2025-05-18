@@ -187,6 +187,26 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 		)
 		h.UI.State.CurrentShape = circle
 		h.UI.StatusLabel.SetText("Drawing circle... Release to complete")
+		
+	case "rectangle":
+		rectangle := models.NewRectangle(
+			h.StartPoint,
+			h.StartPoint, // Initially both corners are the same
+			h.UI.State.CurrentColor,
+			h.UI.State.BrushThickness,
+		)
+		
+		// Apply fill settings if enabled
+		if h.UI.State.FillEnabled {
+			if h.UI.State.UseImageFill && h.UI.State.FillImage != nil {
+				rectangle.SetFillImage(h.UI.State.FillImage)
+			} else if h.UI.State.FillColor != nil {
+				rectangle.SetFillColor(h.UI.State.FillColor)
+			}
+		}
+		
+		h.UI.State.CurrentShape = rectangle
+		h.UI.StatusLabel.SetText("Drawing rectangle... Release to complete")
 	}
 }
 
@@ -198,6 +218,61 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 		h.IsMoving = false
 		h.UI.StatusLabel.SetText("Shape moved.")
 		h.UI.Canvas.Refresh()
+		return
+	}
+	
+	// Handle clipping action
+	if h.UI.State.CurrentAction == "clipping" && !h.IsDrawing {
+		adjustedPoint := h.adjustMousePosition(ev.PointEvent)
+		
+		// Find which shape was clicked
+		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
+			shape := h.UI.State.Shapes[i]
+			if shape.Contains(adjustedPoint) {
+				// Check if it's a polygon
+				polygon, isPolygon := shape.(*models.Polygon)
+				if !isPolygon {
+					h.UI.StatusLabel.SetText("Clipping only works with polygons. Please select a polygon.")
+					return
+				}
+				
+				// Get the selected polygon (clipper)
+				selectedPoly, _ := h.UI.State.SelectedShape.(*models.Polygon)
+				
+				// Check if the polygon to be clipped is convex
+				if !polygon.IsConvex() {
+					h.UI.StatusLabel.SetText("Only convex polygons can be clipped.")
+					return
+				}
+				
+				// Perform clipping using our utility function
+				clippedVertices := ClipPolygon(polygon.GetVertices(), selectedPoly.GetVertices())
+				
+				// Create new polygon with clipped vertices
+				if len(clippedVertices) >= 3 {
+					clippedPoly := models.NewPolygon(clippedVertices, polygon.GetColor(), polygon.Thickness)
+					
+					// Copy fill properties
+					if polygon.IsFilled {
+						if polygon.UseImage {
+							clippedPoly.SetFillImage(polygon.FillImage)
+						} else {
+							clippedPoly.SetFillColor(polygon.FillColor)
+						}
+					}
+					
+					// Add the clipped polygon to the shapes
+					h.UI.State.Shapes = append(h.UI.State.Shapes, clippedPoly)
+					h.UI.Canvas.Refresh()
+					h.UI.StatusLabel.SetText("Polygon clipped successfully.")
+				} else {
+					h.UI.StatusLabel.SetText("Clipping result is not a valid polygon.")
+				}
+				
+				return
+			}
+		}
+		
 		return
 	}
 
@@ -218,6 +293,8 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 			h.UI.StatusLabel.SetText("Line added")
 		case "circle":
 			h.UI.StatusLabel.SetText("Circle added")
+		case "rectangle":
+			h.UI.StatusLabel.SetText("Rectangle added")
 		}
 	}
 }
@@ -263,6 +340,11 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		shape.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
 		h.UI.Canvas.Refresh()
 		
+	case *models.Rectangle:
+		// Update the bottom-right corner as the mouse moves
+		shape.BottomRight = h.CurrentPoint
+		h.UI.Canvas.Refresh()
+		
 	case *models.Pill:
 		if shape.Step == 1 {
 			return
@@ -278,6 +360,16 @@ func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
 	if ev.Name == fyne.KeyReturn && h.UI.State.CurrentAction == "polygon" && len(h.PolyPoints) >= 3 {
 		
 		poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
+		
+		// Apply fill settings if enabled
+		if h.UI.State.FillEnabled {
+			if h.UI.State.UseImageFill && h.UI.State.FillImage != nil {
+				poly.SetFillImage(h.UI.State.FillImage)
+			} else if h.UI.State.FillColor != nil {
+				poly.SetFillColor(h.UI.State.FillColor)
+			}
+		}
+		
 		h.UI.State.Shapes = append(h.UI.State.Shapes, poly)
 		h.PolyPoints = nil
 		h.UI.State.CurrentShape = nil
