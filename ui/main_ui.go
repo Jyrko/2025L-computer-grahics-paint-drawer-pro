@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"paint-drawer-pro/algorithms"
 	"paint-drawer-pro/models"
 
 	"fyne.io/fyne/v2"
@@ -208,9 +209,25 @@ func NewMainUI(window fyne.Window) *MainUI {
 			return
 		}
 		
-		// Check if the polygon is convex
-		if !selectedPoly.IsConvex() {
-			dialog.ShowInformation("Clipping", "Only convex polygons can be used for clipping.", ui.Window)
+		// Convert to algorithm points for simplification
+		vertices := selectedPoly.GetVertices()
+		algVertices := make([]algorithms.Point, len(vertices))
+		for i, v := range vertices {
+			algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
+		}
+		
+		// Simplify the polygon to remove possible duplicate points
+		simplified := algorithms.SimplifyPolygon(algVertices, 2.0)
+		
+		// Display simplified vertex count
+		originalCount := len(vertices)
+		simplifiedCount := len(simplified)
+		
+		// Check if the simplified polygon is convex
+		if !algorithms.IsPolygonConvex(simplified) {
+			message := fmt.Sprintf("Only convex polygons can be used for clipping. Selected polygon has %d vertices (simplified from %d).", 
+				simplifiedCount, originalCount)
+			dialog.ShowInformation("Clipping", message, ui.Window)
 			return
 		}
 		

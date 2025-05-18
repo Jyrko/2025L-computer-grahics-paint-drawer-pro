@@ -5,7 +5,7 @@ import (
 )
 
 // SutherlandHodgman implements the Sutherland-Hodgman polygon clipping algorithm
-// Subject polygon is the polygon to be clipped
+// Subject polygon is the polygon to be clipped (can be any polygon, concave or convex)
 // Clip polygon is the polygon to clip against (must be convex)
 // Returns the clipped polygon vertices
 func SutherlandHodgman(subject, clip []Point) []Point {
@@ -113,6 +113,24 @@ func IsPolygonConvex(verticesInput interface{}) bool {
 	
 	if length < 3 {
 		return false // Not a polygon
+	}
+	
+	// Remove duplicate or near-duplicate points
+	vertices = SimplifyPolygon(vertices, 2.0) // 2.0 pixel threshold
+	
+	// Count actual number of vertices after simplification
+	length = len(vertices)
+	
+	// All triangles are convex (unless they have collinear points)
+	if length == 3 {
+		// Check if points are not collinear
+		x1, y1 := vertices[0].X, vertices[0].Y
+		x2, y2 := vertices[1].X, vertices[1].Y
+		x3, y3 := vertices[2].X, vertices[2].Y
+		
+		// Calculate the area of the triangle using cross product
+		area := (x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)) / 2
+		return area != 0 // If area is not zero, the triangle is convex
 	}
 	
 	// For a polygon to be convex, the cross products of consecutive edges must have the same sign

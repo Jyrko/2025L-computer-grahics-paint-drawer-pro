@@ -19,6 +19,10 @@ func ClipPolygon(subject, clip []models.Point) []models.Point {
 		clipPoints[i] = algorithms.Point{X: p.X, Y: p.Y}
 	}
 	
+	// Simplify polygons to remove duplicate or near-duplicate points
+	subjectPoints = algorithms.SimplifyPolygon(subjectPoints, 2.0) // 2.0 pixel threshold
+	clipPoints = algorithms.SimplifyPolygon(clipPoints, 2.0)
+	
 	// Perform clipping
 	algClippedPoints := algorithms.SutherlandHodgman(subjectPoints, clipPoints)
 	

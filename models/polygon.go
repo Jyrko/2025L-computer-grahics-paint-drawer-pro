@@ -220,8 +220,27 @@ func (p *Polygon) DisableFill() {
 }
 
 // IsConvex checks if this polygon is convex
+// Will attempt to simplify the polygon first to remove duplicate or near-duplicate vertices
 func (p *Polygon) IsConvex() bool {
-	return algorithms.IsPolygonConvex(p.Vertices)
+	if len(p.Vertices) <= 3 {
+		// Triangles are always convex as long as they have distinct points
+		return len(p.Vertices) == 3
+	}
+	
+	// Add debugging information to show the number of vertices
+	vertices := p.Vertices
+	
+	// Convert to algorithm points
+	algVertices := make([]algorithms.Point, len(vertices))
+	for i, v := range vertices {
+		algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
+	}
+	
+	// First simplify the polygon
+	simplified := algorithms.SimplifyPolygon(algVertices, 2.0)
+	
+	// Then check if it's convex
+	return algorithms.IsPolygonConvex(simplified)
 }
 
 // GetVertices returns the vertices of the polygon
