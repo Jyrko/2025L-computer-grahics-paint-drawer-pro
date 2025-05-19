@@ -69,20 +69,19 @@ func (p *Polygon) drawFill(canvas [][]color.Color) {
 
 
 func (p *Polygon) Contains(pt Point) bool {
-	
+	// First, check if we're close to any vertex
 	for _, vertex := range p.Vertices {
 		dx := vertex.X - pt.X
 		dy := vertex.Y - pt.Y
-		if dx*dx+dy*dy <= 25 { 
+		if dx*dx+dy*dy <= 25 { // Within 5 pixels of a vertex
 			return true
 		}
 	}
 
-	
+	// Next, check if we're close to any edge
 	for i := 0; i < len(p.Vertices); i++ {
 		start := p.Vertices[i]
 		end := p.Vertices[(i+1)%len(p.Vertices)]
-
 
 		lineLen := math.Sqrt(float64((end.X-start.X)*(end.X-start.X) + (end.Y-start.Y)*(end.Y-start.Y)))
 		if lineLen == 0 {
@@ -101,6 +100,18 @@ func (p *Polygon) Contains(pt Point) bool {
 		if dist <= float64(p.Thickness+5) {
 			return true
 		}
+	}
+
+	// If the polygon is filled, also check if the point is inside
+	if p.IsFilled {
+		// Convert vertices to algorithms.Point type
+		algVertices := make([]algorithms.Point, len(p.Vertices))
+		for i, v := range p.Vertices {
+			algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
+		}
+		
+		// Check if point is inside the polygon
+		return algorithms.PointInPolygon(algorithms.Point{X: pt.X, Y: pt.Y}, algVertices)
 	}
 
 	return false

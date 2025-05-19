@@ -7,15 +7,12 @@ func SimplifyPolygon(points []Point, threshold float64) []Point {
 		return points
 	}
 
-	// Initialize result with the first point
 	result := []Point{points[0]}
 	
-	// Add points only if they are far enough from the previous point
 	for i := 1; i < len(points); i++ {
 		prev := result[len(result)-1]
 		current := points[i]
 		
-		// Calculate squared distance
 		dx := float64(current.X - prev.X)
 		dy := float64(current.Y - prev.Y)
 		distSquared := dx*dx + dy*dy
@@ -25,7 +22,6 @@ func SimplifyPolygon(points []Point, threshold float64) []Point {
 		}
 	}
 	
-	// Check if the last point is too close to the first point
 	if len(result) > 2 {
 		last := result[len(result)-1]
 		first := result[0]
@@ -35,14 +31,12 @@ func SimplifyPolygon(points []Point, threshold float64) []Point {
 		distSquared := dx*dx + dy*dy
 		
 		if distSquared < threshold*threshold {
-			// Remove the last point if it's too close to the first
 			result = result[:len(result)-1]
 		}
 	}
 	
-	// Ensure we have at least 3 points for a valid polygon
 	if len(result) < 3 {
-		return points // Return original if simplification fails
+		return points
 	}
 	
 	return result
