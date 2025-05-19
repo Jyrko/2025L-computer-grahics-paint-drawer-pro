@@ -92,7 +92,7 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				h.IsMoving = true
 				h.MoveStartX = adjustedPoint.X
 				h.MoveStartY = adjustedPoint.Y
-								if pill, isPill := shape.(*models.Pill); isPill {
+				if pill, isPill := shape.(*models.Pill); isPill {
 					dx := pill.End.X - pill.Start.X
 					dy := pill.End.Y - pill.Start.Y
 					length := math.Sqrt(float64(dx*dx + dy*dy))
@@ -111,6 +111,7 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	}
 	
 	if h.UI.State.CurrentAction == "polygon" && ev.Button == desktop.MouseButtonPrimary {
+
 		if len(h.PolyPoints) == 0 {
 			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
 			h.UI.StatusLabel.SetText("Creating polygon... Click to add points, press Enter to finish")
@@ -175,6 +176,7 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 		if h.UI.State.PenType == "brush" {
 			thickness = h.UI.State.BrushThickness 
 		}
+    
 		line := models.NewLine(
 			h.StartPoint,
 			h.StartPoint, 
@@ -288,6 +290,7 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
 		h.UI.Canvas.Refresh()
+
 		switch h.UI.State.CurrentAction {
 		case "line":
 			h.UI.StatusLabel.SetText("Line added")
@@ -330,7 +333,7 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		return
 	}
 	
-	
+
 	if !h.IsDrawing || h.UI.State.CurrentShape == nil {
 		return
 	}
@@ -392,6 +395,7 @@ func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
 		h.UI.Canvas.Refresh()
 		h.UI.StatusLabel.SetText("Polygon added")
 	} else if ev.Name == fyne.KeyEscape {
+
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
 		h.PolyPoints = nil
@@ -420,7 +424,7 @@ func (h *MouseHandler) DragEnd() {
 		h.UI.Canvas.Refresh()
 		return
 	}
-	
+
 	if h.IsMoving && h.UI.State.SelectedShape != nil {
 		h.IsMoving = false
 		h.UI.StatusLabel.SetText("Shape moved.")
@@ -461,8 +465,6 @@ func (h *MouseHandler) TappedSecondary(ev *fyne.PointEvent) {
 func (h *MouseHandler) adjustMousePosition(ev fyne.PointEvent) models.Point {
 	
 	canvasPos := h.UI.Canvas.Position()
-	
-	
 	
 	x := int(ev.Position.X - canvasPos.X)
 	y := int(ev.Position.Y - canvasPos.Y)

@@ -68,7 +68,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		return ui.renderCanvas(w, h)
 	})
 
-	
 	ui.Canvas.SetMinSize(fyne.NewSize(600, 500))
 	
 	ui.Canvas.Resize(fyne.NewSize(600, 500))
@@ -119,7 +118,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.State.CurrentAction = "select"
 		ui.CurrentToolText.SetText("Current tool: Select")
 		ui.StatusLabel.SetText("Select tool active")
-		
+
 		ui.PillLengthContainer.Hide()
 	})
 
@@ -128,7 +127,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.Canvas.Refresh()
 		ui.StatusLabel.SetText("Canvas cleared")
 	})
-	
 	
 	saveBtn := widget.NewButton("Save", func() {
 		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
@@ -215,6 +213,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.StatusLabel.SetText("Clipping mode active. Select a polygon to clip against " + 
 			"the current selection.")
 	})
+
 
 	aaCheck := widget.NewCheck("Anti-aliasing", func(checked bool) {
 		ui.State.AntiAliasing = checked
@@ -428,6 +427,33 @@ func NewMainUI(window fyne.Window) *MainUI {
 	)
 
 	return ui
+}
+
+
+
+type buttonBackgroundLayout struct{}
+
+func (d *buttonBackgroundLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	if len(objects) < 2 {
+		return
+	}
+
+	
+	objects[0].Resize(size)
+	objects[0].Move(fyne.NewPos(0, 0))
+
+	
+	objects[1].Resize(size)
+	objects[1].Move(fyne.NewPos(0, 0))
+}
+
+func (d *buttonBackgroundLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	if len(objects) < 2 {
+		return fyne.NewSize(20, 20)
+	}
+
+	
+	return objects[1].MinSize()
 }
 
 func (ui *MainUI) renderCanvas(w, h int) image.Image {
