@@ -25,12 +25,12 @@ func (p *Polygon) Draw(canvas [][]color.Color, antiAliasing bool) {
 		return 
 	}
 
-	// Draw fill if enabled
+	
 	if p.IsFilled {
 		p.drawFill(canvas)
 	}
 	
-	// Draw the outline
+	
 	for i := 0; i < len(p.Vertices); i++ {
 		start := p.Vertices[i]
 		end := p.Vertices[(i+1)%len(p.Vertices)]
@@ -47,9 +47,9 @@ func (p *Polygon) Draw(canvas [][]color.Color, antiAliasing bool) {
 	}
 }
 
-// drawFill fills the polygon with a solid color or an image
+
 func (p *Polygon) drawFill(canvas [][]color.Color) {
-	// Convert vertices to algorithms.Point type
+	
 	algVertices := make([]algorithms.Point, len(p.Vertices))
 	for i, v := range p.Vertices {
 		algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
@@ -133,7 +133,7 @@ func (p *Polygon) Serialize() map[string]interface{} {
 		"useImage":  p.UseImage,
 	}
 	
-	// Serialize vertices
+	
 	vertices := make([]map[string]interface{}, len(p.Vertices))
 	for i, vertex := range p.Vertices {
 		vertices[i] = map[string]interface{}{
@@ -143,7 +143,7 @@ func (p *Polygon) Serialize() map[string]interface{} {
 	}
 	serMap["vertices"] = vertices
 	
-	// Serialize colors
+	
 	if p.Color != nil {
 		r, g, b, a := p.Color.RGBA()
 		serMap["color"] = map[string]interface{}{
@@ -164,8 +164,8 @@ func (p *Polygon) Serialize() map[string]interface{} {
 		}
 	}
 	
-	// Image data would be too large to serialize directly
-	// Consider saving it to a file instead
+	
+	
 	
 	return serMap
 }
@@ -182,7 +182,7 @@ func (p *Polygon) Clone() Shape {
 	clone.IsFilled = p.IsFilled
 	clone.UseImage = p.UseImage
 	
-	// Deep copy fill image if present
+	
 	if p.UseImage && p.FillImage != nil {
 		height := len(p.FillImage)
 		if height > 0 {
@@ -200,50 +200,50 @@ func (p *Polygon) Clone() Shape {
 	return clone
 }
 
-// SetFillColor sets the fill color of the polygon
+
 func (p *Polygon) SetFillColor(c color.Color) {
 	p.FillColor = c
 	p.IsFilled = true
 	p.UseImage = false
 }
 
-// SetFillImage sets an image to fill the polygon
+
 func (p *Polygon) SetFillImage(img [][]color.Color) {
 	p.FillImage = img
 	p.IsFilled = true
 	p.UseImage = true
 }
 
-// DisableFill disables filling the polygon
+
 func (p *Polygon) DisableFill() {
 	p.IsFilled = false
 }
 
-// IsConvex checks if this polygon is convex
-// Will attempt to simplify the polygon first to remove duplicate or near-duplicate vertices
+
+
 func (p *Polygon) IsConvex() bool {
 	if len(p.Vertices) <= 3 {
-		// Triangles are always convex as long as they have distinct points
+		
 		return len(p.Vertices) == 3
 	}
 	
-	// Add debugging information to show the number of vertices
+	
 	vertices := p.Vertices
 	
-	// Convert to algorithm points
+	
 	algVertices := make([]algorithms.Point, len(vertices))
 	for i, v := range vertices {
 		algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
 	}
 	
-	// First simplify the polygon
+	
 	simplified := algorithms.SimplifyPolygon(algVertices, 2.0)
 	
-	// Then check if it's convex
+	
 	return algorithms.IsPolygonConvex(simplified)
 }
 
-// GetVertices returns the vertices of the polygon
+
 func (p *Polygon) GetVertices() []Point {
 	return p.Vertices
 }

@@ -1,10 +1,10 @@
 package ui
 
 import (
-	"image" // Added import for image
+	"image"
 	"image/color"
 	"math"
-	"paint-drawer-pro/algorithms" // Added import for algorithms
+	"paint-drawer-pro/algorithms"
 	"paint-drawer-pro/models"
 
 	"fyne.io/fyne/v2"
@@ -13,7 +13,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// ResizePoint represents which control point is being dragged
+
 type ResizePoint int
 
 const (
@@ -67,31 +67,31 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	h.StartPoint = adjustedPoint
 	h.CurrentPoint = adjustedPoint
 	
-	// Reset resize state
+	
 	h.IsResizing = false
 	h.CurrentResizePoint = None
 
 	if h.UI.State.CurrentAction == "scanline_fill" && ev.Button == desktop.MouseButtonPrimary {
-		if h.UI.State.FillStage == "" || h.UI.State.FillStage == "area_selected" { // Start selecting area or restart selection
-			// Clear previous selection rect if any visual remnants by redrawing
+		if h.UI.State.FillStage == "" || h.UI.State.FillStage == "area_selected" { 
+			
 			if h.UI.State.SelectionRect != nil {
 				h.UI.State.SelectionRect = nil
-				h.UI.Canvas.Refresh() // Clear old one first
+				h.UI.Canvas.Refresh() 
 			}
-			h.UI.State.SelectionRect = models.NewRectangle(adjustedPoint, adjustedPoint, color.RGBA{0, 0, 255, 100}, 1) // Blue, slightly transparent
-			// It's better if fill color for selection is not set here, but handled by drawing logic for consistency
-			// h.UI.State.SelectionRect.SetFillColor(color.RGBA{0, 0, 255, 50})
+			h.UI.State.SelectionRect = models.NewRectangle(adjustedPoint, adjustedPoint, color.RGBA{0, 0, 255, 100}, 1) 
+			
+			
 			h.UI.State.FillStage = "selecting_area"
-			h.IsDrawing = true // Use IsDrawing to indicate selection rectangle drawing in progress
+			h.IsDrawing = true 
 			h.UI.StatusLabel.SetText("Drag to select area for scanline fill. Release to confirm selection.")
 			h.UI.Canvas.Refresh()
 			return
 		} else if h.UI.State.FillStage == "awaiting_fill_point" && h.UI.State.SelectionRect != nil {
-			normalizedSelectionRect := *h.UI.State.SelectionRect // Make a copy for safety
+			normalizedSelectionRect := *h.UI.State.SelectionRect 
 			normalizedSelectionRect.Normalize()
 
 			if normalizedSelectionRect.Contains(adjustedPoint) {
-				// Area selected, and click is inside. Perform fill.
+				
 				canvasSize := h.UI.Canvas.Size()
 				currentRenderedImage := h.UI.renderCanvas(int(canvasSize.Width), int(canvasSize.Height))
 
@@ -106,27 +106,27 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 					}
 				}
 
-				// Create a separate buffer for the fill algorithm to operate on.
+				
 				fillBufferForAlgorithm := make([][]color.Color, height)
 				for y := 0; y < height; y++ {
 					fillBufferForAlgorithm[y] = make([]color.Color, width)
 					copy(fillBufferForAlgorithm[y], originalCanvasData[y])
 				}
 
-				boundaryColor := color.RGBA{0, 0, 0, 255} // Assuming black boundary for now.
+				boundaryColor := color.RGBA{0, 0, 0, 255} 
 				fillColor := h.UI.State.FillColor
 				if h.UI.State.UseImageFill {
 					h.UI.StatusLabel.SetText("Scanline fill does not support image patterns. Using selected fill color.")
 					if fillColor == nil {
-						fillColor = color.RGBA{100, 100, 100, 255} // Default fill if none selected
+						fillColor = color.RGBA{100, 100, 100, 255} 
 					}
 				}
 
 				algPoint := algorithms.Point{X: adjustedPoint.X, Y: adjustedPoint.Y}
 				algorithms.SmithScanlineFill(fillBufferForAlgorithm, algPoint, fillColor, boundaryColor)
 
-				// Composite the filled area (from fillBufferForAlgorithm) onto the original image (originalCanvasData)
-				// to create the final image, respecting the selection rectangle bounds.
+				
+				
 				finalImage := image.NewRGBA(image.Rect(0, 0, width, height))
 				for y := 0; y < height; y++ {
 					for x := 0; x < width; x++ {
@@ -139,36 +139,36 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 					}
 				}
 
-				// Update the MainUI's base image for the canvas
-				// Assumes MainUI has a field like 'BaseImage *image.RGBA' that its raster generator uses.
+				
+				
 				h.UI.BaseImage = finalImage 
 
-				h.UI.State.FillStage = "area_selected" // Indicate fill is done, ready for new selection or tool change
-				h.UI.State.SelectionRect = nil      // Clear the selection rectangle from state
-				h.UI.Canvas.Refresh()               // Refresh canvas to show the filled area and remove selection rect
+				h.UI.State.FillStage = "area_selected" 
+				h.UI.State.SelectionRect = nil      
+				h.UI.Canvas.Refresh()               
 				h.UI.StatusLabel.SetText("Area filled. Click to select new area or choose another tool.")
 				return
 			} else {
-				// Clicked outside the selection rectangle
+				
 				h.UI.StatusLabel.SetText("Clicked outside selection. Click inside the blue rectangle to fill, or click and drag to reselect area.")
-				// Optionally, reset to "selecting_area" or "" stage if a click outside means cancel current selection
-				// h.UI.State.FillStage = ""
-				// h.UI.State.SelectionRect = nil
-				// h.UI.Canvas.Refresh()
+				
+				
+				
+				
 				return
 			}
 		}
-		// If FillStage is "selecting_area", MouseMove and MouseUp will handle it.
-		// If FillStage is "awaiting_fill_point" but SelectionRect is nil (should not happen), ignore.
-		return // Prevent other MouseDown actions when scanline_fill is active and in a specific stage
+		
+		
+		return 
 	}
 	
-	// ... (rest of MouseDown, e.g., for "select", "polygon", "pill", "line", etc.) ...
-	// Ensure that if IsDrawing was set true for scanline_fill selection, it doesn't interfere here.
-	// The return statements above should handle this for scanline_fill stages.
+	
+	
+	
 
 	if h.UI.State.CurrentAction == "select" && ev.Button == desktop.MouseButtonPrimary {
-		// Check if we're clicking on a resize handle of the currently selected rectangle
+		
 		if h.UI.State.SelectedShape != nil {
 			if rect, isRect := h.UI.State.SelectedShape.(*models.Rectangle); isRect {
 				resizePoint := rect.GetResizePointAt(adjustedPoint)
@@ -181,11 +181,11 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 			}
 		}
 		
-		// If not resizing, proceed with normal selection
+		
 		h.UI.State.SelectedShape = nil
 		h.UI.PillLengthContainer.Hide()
 		
-		// Find if we clicked on a shape
+		
 		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
 			shape := h.UI.State.Shapes[i]
 			if shape.Contains(adjustedPoint) {
@@ -194,7 +194,7 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				h.MoveStartX = adjustedPoint.X
 				h.MoveStartY = adjustedPoint.Y
 				
-				// Handle special case for pill shapes
+				
 				if pill, isPill := shape.(*models.Pill); isPill {
 					dx := pill.End.X - pill.Start.X
 					dy := pill.End.Y - pill.Start.Y
@@ -357,12 +357,12 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	case "rectangle":
 		rectangle := models.NewRectangle(
 			h.StartPoint,
-			h.StartPoint, // Initially both corners are the same
+			h.StartPoint, 
 			h.UI.State.CurrentColor,
 			h.UI.State.BrushThickness,
 		)
 		
-		// Apply fill settings if enabled
+		
 		if h.UI.State.FillEnabled {
 			if h.UI.State.UseImageFill && h.UI.State.FillImage != nil {
 				rectangle.SetFillImage(h.UI.State.FillImage)
@@ -384,11 +384,11 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 	if h.UI.State.CurrentAction == "scanline_fill" && h.UI.State.FillStage == "selecting_area" {
 		if h.IsDrawing && h.UI.State.SelectionRect != nil {
 			h.UI.State.SelectionRect.BottomRight = adjustedPoint
-			h.UI.State.SelectionRect.Normalize() // Ensure TopLeft and BottomRight are correct
+			h.UI.State.SelectionRect.Normalize() 
 			h.IsDrawing = false
 			h.UI.State.FillStage = "awaiting_fill_point"
 			h.UI.StatusLabel.SetText("Area selected. Click inside the blue rectangle to pick a fill start point.")
-			h.UI.Canvas.Refresh() // Refresh to show final selection rect and await click
+			h.UI.Canvas.Refresh() 
 			return
 		}
 	}
@@ -408,43 +408,43 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 		return
 	}
 	
-	// Handle clipping action
+	
 	if h.UI.State.CurrentAction == "clipping" && !h.IsDrawing {
 		adjustedPoint := h.adjustMousePosition(ev.PointEvent)
 		
-		// Find which shape was clicked
+		
 		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
 			shape := h.UI.State.Shapes[i]
 			if shape.Contains(adjustedPoint) {
-				// Check if it's a polygon
+				
 				polygon, isPolygon := shape.(*models.Polygon)
 				if !isPolygon {
 					h.UI.StatusLabel.SetText("Clipping only works with polygons. Please select a polygon.")
 					return
 				}
 				
-				// Get the selected polygon (clipper)
+				
 				selectedPoly, _ := h.UI.State.SelectedShape.(*models.Polygon)
 				
 				if !selectedPoly.IsConvex() {
 					h.UI.StatusLabel.SetText("Only convex polygons can be used as clippers.")
 					return
 				}
-				// Check if the polygon to be clipped is convex
+				
 				if !polygon.IsConvex() {
 					h.UI.StatusLabel.SetText("Only convex polygons can be clipped.")
 					return
 				}
 
 				
-				// Perform clipping using our utility function
+				
 				clippedVertices := ClipPolygon(polygon.GetVertices(), selectedPoly.GetVertices())
 				
-				// Create new polygon with clipped vertices
+				
 				if len(clippedVertices) >= 3 {
 					clippedPoly := models.NewPolygon(clippedVertices, polygon.GetColor(), polygon.Thickness)
 					
-					// Copy fill properties
+					
 					if polygon.IsFilled {
 						if polygon.UseImage {
 							clippedPoly.SetFillImage(polygon.FillImage)
@@ -453,7 +453,7 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 						}
 					}
 					
-					// Add the clipped polygon to the shapes
+					
 					h.UI.State.Shapes = append(h.UI.State.Shapes, clippedPoly)
 					h.UI.Canvas.Refresh()
 					h.UI.StatusLabel.SetText("Polygon clipped successfully.")
@@ -500,12 +500,12 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 	if h.UI.State.CurrentAction == "scanline_fill" && h.UI.State.FillStage == "selecting_area" && h.IsDrawing {
 		if h.UI.State.SelectionRect != nil {
 			h.UI.State.SelectionRect.BottomRight = h.CurrentPoint
-			h.UI.Canvas.Refresh() // Refresh to show selection rectangle being drawn
-			return // Exclusive handling for selection drawing
+			h.UI.Canvas.Refresh() 
+			return 
 		}
 	}
 	
-	// Handle resizing of rectangle
+	
 	if h.IsResizing && h.UI.State.SelectedShape != nil {
 		if rect, isRect := h.UI.State.SelectedShape.(*models.Rectangle); isRect {
 			resizePoint := models.ResizePointType(h.CurrentResizePoint)
@@ -515,7 +515,7 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		return
 	}
 	
-	// Handle moving shapes
+	
 	if h.IsMoving && h.UI.State.SelectedShape != nil {
 		
 		deltaX := h.CurrentPoint.X - h.MoveStartX
@@ -551,7 +551,7 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		h.UI.Canvas.Refresh()
 		
 	case *models.Rectangle:
-		// Update the bottom-right corner as the mouse moves
+		
 		shape.BottomRight = h.CurrentPoint
 		h.UI.Canvas.Refresh()
 		
@@ -567,12 +567,12 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 
 
 func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
-	// Handle shape deletion with Delete or Backspace keys
+	
 	if (ev.Name == fyne.KeyDelete || ev.Name == fyne.KeyBackspace) && h.UI.State.CurrentAction == "select" && h.UI.State.SelectedShape != nil {
-		// Find and remove the selected shape
+		
 		for i, shape := range h.UI.State.Shapes {
 			if shape == h.UI.State.SelectedShape {
-				// Remove shape from the slice
+				
 				h.UI.State.Shapes = append(h.UI.State.Shapes[:i], h.UI.State.Shapes[i+1:]...)
 				h.UI.State.SelectedShape = nil
 				h.UI.Canvas.Refresh()
@@ -587,7 +587,7 @@ func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
 		
 		poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
 		
-		// Apply fill settings if enabled
+		
 		if h.UI.State.FillEnabled {
 			if h.UI.State.UseImageFill && h.UI.State.FillImage != nil {
 				poly.SetFillImage(h.UI.State.FillImage)
@@ -670,20 +670,20 @@ func (h *MouseHandler) TappedSecondary(ev *fyne.PointEvent) {
 
 
 func (h *MouseHandler) adjustMousePosition(ev fyne.PointEvent) models.Point {
-	// Get the position of the canvas within the window
+	
 	canvasPos := h.UI.Canvas.Position()
 	
-	// Calculate the position relative to the canvas's position
-	// by subtracting the canvas's position from the absolute mouse position
+	
+	
 	x := int(ev.Position.X - canvasPos.X)
 	y := int(ev.Position.Y - canvasPos.Y)
 	
-	// Get canvas size for bounds checking
+	
 	canvasSize := h.UI.Canvas.Size()
 	maxX := int(canvasSize.Width) - 1
 	maxY := int(canvasSize.Height) - 1
 	
-	// Constrain to canvas bounds
+	
 	if x < 0 {
 		x = 0
 	} else if x > maxX {

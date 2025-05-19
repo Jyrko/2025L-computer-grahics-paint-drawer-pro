@@ -1,4 +1,3 @@
-// Package ui contains the user interface components for the paint application
 package ui
 
 import (
@@ -9,7 +8,7 @@ import (
 	"paint-drawer-pro/models"
 )
 
-// SerializeColor converts a color.Color to a map for JSON serialization
+
 func SerializeColor(c color.Color) map[string]interface{} {
 	if c == nil {
 		return map[string]interface{}{
@@ -29,7 +28,7 @@ func SerializeColor(c color.Color) map[string]interface{} {
 	}
 }
 
-// DeserializeColor converts a map to color.Color
+
 func DeserializeColor(colorMap map[string]interface{}) color.Color {
 	r := uint8(colorMap["R"].(float64))
 	g := uint8(colorMap["G"].(float64))
@@ -39,7 +38,7 @@ func DeserializeColor(colorMap map[string]interface{}) color.Color {
 	return color.RGBA{r, g, b, a}
 }
 
-// SerializePoint converts a Point to a map
+
 func SerializePoint(p models.Point) map[string]interface{} {
 	return map[string]interface{}{
 		"X": p.X,
@@ -47,7 +46,7 @@ func SerializePoint(p models.Point) map[string]interface{} {
 	}
 }
 
-// DeserializePoint converts a map to Point
+
 func DeserializePoint(pointMap map[string]interface{}) models.Point {
 	return models.Point{
 		X: int(pointMap["X"].(float64)),
@@ -55,9 +54,9 @@ func DeserializePoint(pointMap map[string]interface{}) models.Point {
 	}
 }
 
-// SaveShapesToFile saves all shapes to a JSON file
+
 func (ui *MainUI) SaveShapesToFile(filePath string) error {
-	// Create a map for shapes serialization
+	
 	shapesData := make([]map[string]interface{}, 0, len(ui.State.Shapes))
 	
 	for _, shape := range ui.State.Shapes {
@@ -65,18 +64,18 @@ func (ui *MainUI) SaveShapesToFile(filePath string) error {
 		shapesData = append(shapesData, shapeData)
 	}
 	
-	// Create the final data structure to serialize
+	
 	data := map[string]interface{}{
 		"shapes": shapesData,
 	}
 	
-	// Convert to JSON
+	
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error serializing shapes: %v", err)
 	}
 	
-	// Write to file
+	
 	err = os.WriteFile(filePath, jsonData, 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to file: %v", err)
@@ -85,38 +84,38 @@ func (ui *MainUI) SaveShapesToFile(filePath string) error {
 	return nil
 }
 
-// LoadShapesFromFile loads shapes from a JSON file
+
 func (ui *MainUI) LoadShapesFromFile(filePath string) error {
-	// Read file
+	
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("error reading file: %v", err)
 	}
 	
-	// Parse JSON
+	
 	var data map[string]interface{}
 	err = json.Unmarshal(fileData, &data)
 	if err != nil {
 		return fmt.Errorf("error parsing JSON: %v", err)
 	}
 	
-	// Extract shapes
+	
 	shapesData, ok := data["shapes"].([]interface{})
 	if !ok {
 		return fmt.Errorf("invalid shapes data format")
 	}
 	
-	// Clear current shapes
+	
 	ui.State.Shapes = []models.Shape{}
 	
-	// Deserialize shapes
+	
 	for _, shapeData := range shapesData {
 		shapeMap, ok := shapeData.(map[string]interface{})
 		if !ok {
 			continue
 		}
 		
-		// Get shape type
+		
 		shapeType, ok := shapeMap["type"].(string)
 		if !ok {
 			continue
@@ -148,7 +147,7 @@ func (ui *MainUI) LoadShapesFromFile(filePath string) error {
 	return nil
 }
 
-// Helper functions for shape deserialization
+
 func deserializeCircle(data map[string]interface{}) *models.Circle {
 	centerMap, ok := data["center"].(map[string]interface{})
 	if !ok {
@@ -218,13 +217,13 @@ func deserializePolygon(data map[string]interface{}) *models.Polygon {
 	
 	polygon := models.NewPolygon(vertices, color, thickness)
 	
-	// Handle fill properties
+	
 	isFilled, ok := data["isFilled"].(bool)
 	if ok && isFilled {
 		useImage, ok := data["useImage"].(bool)
 		if ok && useImage {
-			// For image fills, we'd need to store the image data or a reference
-			// For simplicity, we'll just use a solid color fill if image data is missing
+			
+			
 			fillColorMap, ok := data["fillColor"].(map[string]interface{})
 			if ok {
 				fillColor := DeserializeColor(fillColorMap)
@@ -266,13 +265,13 @@ func deserializeRectangle(data map[string]interface{}) *models.Rectangle {
 	
 	rectangle := models.NewRectangle(topLeft, bottomRight, color, thickness)
 	
-	// Handle fill properties
+	
 	isFilled, ok := data["isFilled"].(bool)
 	if ok && isFilled {
 		useImage, ok := data["useImage"].(bool)
 		if ok && useImage {
-			// For image fills, we'd need to store the image data or a reference
-			// For simplicity, we'll just use a solid color fill if image data is missing
+			
+			
 			fillColorMap, ok := data["fillColor"].(map[string]interface{})
 			if ok {
 				fillColor := DeserializeColor(fillColorMap)

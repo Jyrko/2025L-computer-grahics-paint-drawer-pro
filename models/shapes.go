@@ -53,12 +53,12 @@ type DrawingState struct {
 	FillColor      color.Color
 	FillImage      [][]color.Color
 	UseImageFill   bool 
-	SelectionRect  *Rectangle // Added for scanline fill area selection
-	FillStage      string     // Added for scanline fill stages (e.g., selecting_area, area_selected)
+	SelectionRect  *Rectangle 
+	FillStage      string     
 }
 
-// Normalize ensures that TopLeft is actually the top-left
-// and BottomRight is the bottom-right.
+
+
 func (r *Rectangle) Normalize() {
 	if r.TopLeft.X > r.BottomRight.X {
 		r.TopLeft.X, r.BottomRight.X = r.BottomRight.X, r.TopLeft.X
@@ -68,5 +68,4 @@ func (r *Rectangle) Normalize() {
 	}
 }
 
-// Contains checks if a point is inside the rectangle.
-// ...existing code...
+

@@ -20,7 +20,7 @@ type MainUI struct {
 	Window          fyne.Window
 	Container       *fyne.Container
 	Canvas          *canvas.Raster
-	BaseImage       *image.RGBA // Added to store the base pixel data of the canvas
+	BaseImage       *image.RGBA 
 	ToolsContainer  *fyne.Container
 	StatusLabel     *widget.Label
 	CurrentToolText *widget.Label
@@ -69,9 +69,9 @@ func NewMainUI(window fyne.Window) *MainUI {
 		return ui.renderCanvas(w, h)
 	})
 
-	// Set both min size and a fixed size for the canvas to ensure proper positioning
+	
 	ui.Canvas.SetMinSize(fyne.NewSize(600, 500))
-	// Make the canvas resize with the window
+	
 	ui.Canvas.Resize(fyne.NewSize(600, 500))
 
 	
@@ -138,10 +138,10 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.State.Shapes = []models.Shape{}
 		ui.State.CurrentShape = nil
 		ui.State.SelectedShape = nil
-		ui.State.SelectionRect = nil // Clear selection rectangle for scanline fill
-		ui.State.FillStage = ""      // Reset fill stage
+		ui.State.SelectionRect = nil 
+		ui.State.FillStage = ""      
 
-		// Reset BaseImage to a white canvas
+		
 		if ui.Canvas != nil && ui.Canvas.Size().Width > 0 && ui.Canvas.Size().Height > 0 {
 			canvasSize := ui.Canvas.Size()
 			w := int(canvasSize.Width)
@@ -157,7 +157,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.StatusLabel.SetText("Canvas cleared")
 	})
 	
-	// File save button
+	
 	saveBtn := widget.NewButton("Save", func() {
 		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 			if err != nil {
@@ -165,16 +165,16 @@ func NewMainUI(window fyne.Window) *MainUI {
 				return
 			}
 			if writer == nil {
-				return // User cancelled
+				return 
 			}
 			
-			// Close the writer as we'll use our own file handler
+			
 			writer.Close()
 			
-			// Get the file path
+			
 			filePath := writer.URI().Path()
 			
-			// Save shapes to the file
+			
 			err = ui.SaveShapesToFile(filePath)
 			if err != nil {
 				dialog.ShowError(err, ui.Window)
@@ -188,7 +188,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		fd.Show()
 	})
 	
-	// File load button
+	
 	loadBtn := widget.NewButton("Load", func() {
 		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
@@ -196,16 +196,16 @@ func NewMainUI(window fyne.Window) *MainUI {
 				return
 			}
 			if reader == nil {
-				return // User cancelled
+				return 
 			}
 			
-			// Close the reader as we'll use our own file handler
+			
 			reader.Close()
 			
-			// Get the file path
+			
 			filePath := reader.URI().Path()
 			
-			// Load shapes from the file
+			
 			err = ui.LoadShapesFromFile(filePath)
 			if err != nil {
 				dialog.ShowError(err, ui.Window)
@@ -219,9 +219,9 @@ func NewMainUI(window fyne.Window) *MainUI {
 		fd.Show()
 	})
 	
-	// Clipping button
+	
 	clipBtn := widget.NewButton("Clip Polygon", func() {
-		// Enable only when we have a selected shape that's a polygon
+		
 		if ui.State.SelectedShape == nil {
 			dialog.ShowInformation("Clipping", "Please select a polygon to clip first.", ui.Window)
 			return
@@ -233,21 +233,21 @@ func NewMainUI(window fyne.Window) *MainUI {
 			return
 		}
 		
-		// Convert to algorithm points for simplification
+		
 		vertices := selectedPoly.GetVertices()
 		algVertices := make([]algorithms.Point, len(vertices))
 		for i, v := range vertices {
 			algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
 		}
 		
-		// Simplify the polygon to remove possible duplicate points
+		
 		simplified := algorithms.SimplifyPolygon(algVertices, 2.0)
 		
-		// Display simplified vertex count
+		
 		originalCount := len(vertices)
 		simplifiedCount := len(simplified)
 		
-		// Check if the simplified polygon is convex
+		
 		if !algorithms.IsPolygonConvex(simplified) {
 			message := fmt.Sprintf("Only convex polygons can be used for clipping. Selected polygon has %d vertices (simplified from %d).", 
 				simplifiedCount, originalCount)
@@ -300,19 +300,19 @@ func NewMainUI(window fyne.Window) *MainUI {
 		nil, nil, thicknessLabel, thicknessValue, thicknessSlider,
 	)
 
-	// Fill controls
+	
 	fillCheck := widget.NewCheck("Fill Shapes", func(checked bool) {
 		ui.State.FillEnabled = checked
 		ui.StatusLabel.SetText(fmt.Sprintf("Fill %s", map[bool]string{true: "enabled", false: "disabled"}[checked]))
 	})
 	
 	fillColorBtn := widget.NewButton("Fill Color", func() {
-		// Create RGB sliders for fill color
+		
 		rSlider := widget.NewSlider(0, 255)
 		gSlider := widget.NewSlider(0, 255)
 		bSlider := widget.NewSlider(0, 255)
 
-		// Set initial values to current fill color or default
+		
 		fillColor := ui.State.FillColor
 		if fillColor == nil {
 			fillColor = color.RGBA{255, 255, 255, 255}
@@ -323,16 +323,16 @@ func NewMainUI(window fyne.Window) *MainUI {
 		gSlider.Value = float64(uint8(g))
 		bSlider.Value = float64(uint8(b))
 
-		// Color preview
+		
 		preview := canvas.NewRectangle(fillColor)
 		preview.SetMinSize(fyne.NewSize(100, 60))
 
-		// Labels
+		
 		rLabel := widget.NewLabel(fmt.Sprintf("R: %d", uint8(r)))
 		gLabel := widget.NewLabel(fmt.Sprintf("G: %d", uint8(g)))
 		bLabel := widget.NewLabel(fmt.Sprintf("B: %d", uint8(b)))
 
-		// Update function
+		
 		updateFillColor := func() {
 			r := uint8(rSlider.Value)
 			g := uint8(gSlider.Value)
@@ -347,7 +347,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			bLabel.SetText(fmt.Sprintf("B: %d", b))
 			}
 
-		// Slider change handlers
+		
 		rSlider.OnChanged = func(value float64) {
 			updateFillColor()
 		}
@@ -358,7 +358,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			updateFillColor()
 		}
 
-		// Dialog content
+		
 		content := container.NewVBox(
 			preview,
 			widget.NewSeparator(),
@@ -370,7 +370,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			bSlider,
 			)
 
-		// Create and show dialog
+		
 		customDialog := dialog.NewCustom("Choose Fill Color", "Apply", content, ui.Window)
 		customDialog.SetOnClosed(func() {
 			newColor := color.RGBA{
@@ -382,7 +382,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			ui.State.FillColor = newColor
 			ui.StatusLabel.SetText("Fill color updated")
 			
-			// If a shape is selected, apply the fill color
+			
 			if ui.State.SelectedShape != nil {
 				switch s := ui.State.SelectedShape.(type) {
 				case *models.Polygon:
@@ -429,7 +429,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			ui.State.UseImageFill = true
 			ui.StatusLabel.SetText("Fill image loaded")
 			
-			// Apply to selected shape if any
+			
 			if ui.State.SelectedShape != nil {
 				switch s := ui.State.SelectedShape.(type) {
 				case *models.Polygon:
@@ -456,12 +456,12 @@ func NewMainUI(window fyne.Window) *MainUI {
 		pillBtn,
 		polygonBtn,
 		rectangleBtn,
-		scanlineFillBtn, // Add scanline fill button
+		scanlineFillBtn, 
 		selectBtn,
 		widget.NewSeparator(),
 		clearBtn,
-		saveBtn, // Add save button to the tools container
-		loadBtn, // Add load button to the tools container
+		saveBtn, 
+		loadBtn, 
 		clipBtn,
 		widget.NewSeparator(),
 		aaCheck,
@@ -493,33 +493,33 @@ func NewMainUI(window fyne.Window) *MainUI {
 }
 
 func (ui *MainUI) renderCanvas(w, h int) image.Image {
-	// Ensure BaseImage is initialized and of the correct size
+	
 	if ui.BaseImage == nil || ui.BaseImage.Bounds().Dx() != w || ui.BaseImage.Bounds().Dy() != h {
 		ui.BaseImage = image.NewRGBA(image.Rect(0, 0, w, h))
-		// Initialize with white background
+		
 		for y := 0; y < h; y++ {
 			for x := 0; x < w; x++ {
 				ui.BaseImage.Set(x, y, color.White)
 			}
 		}
-			// When BaseImage is reinitialized (e.g. on resize), we should redraw existing shapes onto it.
-		// This ensures that previously drawn permanent shapes are not lost.
+			
+		
 		for _, shape := range ui.State.Shapes {
-			tempCanvasForShape := make([][]color.Color, h) // Use a temp Go draw canvas for each shape
+			tempCanvasForShape := make([][]color.Color, h) 
 			for j := range tempCanvasForShape {
 				tempCanvasForShape[j] = make([]color.Color, w)
 				for i := 0; i < w; i++ {
-					tempCanvasForShape[j][i] = ui.BaseImage.At(i,j) // Start with current BaseImage content
+					tempCanvasForShape[j][i] = ui.BaseImage.At(i,j) 
 				}
 			}
 			shape.Draw(tempCanvasForShape, ui.State.AntiAliasing)
-			// Transfer the drawn shape from tempCanvasForShape to ui.BaseImage
+			
 			for yDraw := 0; yDraw < h; yDraw++ {
 				for xDraw := 0; xDraw < w; xDraw++ {
 					if tempCanvasForShape[yDraw][xDraw] != nil {
-						// Check if the color is different from the initial white to avoid unnecessary Set operations if not needed
-						// This is a micro-optimization, main point is to transfer the drawn shape.
-						// Simplified: always set if drawn.
+						
+						
+						
 						ui.BaseImage.Set(xDraw, yDraw, tempCanvasForShape[yDraw][xDraw])
 					}
 				}
@@ -527,7 +527,7 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	// Create a new image for this frame, starting with the content of BaseImage
+	
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
@@ -535,21 +535,21 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	// Draw all permanent shapes (already on BaseImage, but this loop is for other effects or if BaseImage wasn't pre-drawn)
-	// For current logic, BaseImage should already contain these. This loop might be redundant if BaseImage is always up-to-date.
-	// However, keeping it allows shapes to be drawn with current AA settings if those changed.
-	// Let's refine: shapes are drawn onto BaseImage when they are finalized or when BaseImage is resized.
-	// So, this loop here is more about overlaying dynamic elements or ensuring current AA is applied if we re-render all shapes each frame.
-	// Given scanline fill modifies BaseImage directly, we draw shapes on top of whatever BaseImage holds.
+	
+	
+	
+	
+	
+	
 
-	// Draw shapes from ui.State.Shapes onto the current frame's image (img)
-	// This ensures they are drawn over any scanline fills that might be in BaseImage
+	
+	
 	for _, shape := range ui.State.Shapes {
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
 			for i := 0; i < w; i++ {
-				canvas[j][i] = img.At(i, j) // Start with current image content for this shape layer
+				canvas[j][i] = img.At(i, j) 
 			}
 		}
 		shape.Draw(canvas, ui.State.AntiAliasing)
@@ -562,7 +562,7 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	// Draw the current shape being drawn (e.g., line before mouse release)
+	
 	if ui.State.CurrentShape != nil {
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
@@ -583,25 +583,25 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	// Draw selection rectangle for scanline fill if it exists and we are in a relevant stage
+	
 	if ui.State.CurrentAction == "scanline_fill" && (ui.State.FillStage == "selecting_area" || ui.State.FillStage == "awaiting_fill_point") && ui.State.SelectionRect != nil {
 		selectionRect := ui.State.SelectionRect
-		// Create a temporary canvas layer for the selection rectangle
+		
 		tempCanvas := make([][]color.Color, h)
 		for j := range tempCanvas {
 			tempCanvas[j] = make([]color.Color, w)
-			// No need to copy img here, selection is drawn on top
+			
 		}
-		selectionRect.Draw(tempCanvas, false) // Draw selection rect without anti-aliasing for clarity
+		selectionRect.Draw(tempCanvas, false) 
 
-		// Overlay the tempCanvas onto img
+		
 		for y := 0; y < h; y++ {
 			for x := 0; x < w; x++ {
 				if tempCanvas[y][x] != nil {
-					// Get the alpha value from the drawn color on tempCanvas
-					// We don't need r,g,b here, just alpha to check if it's transparent.
+					
+					
 					_, _, _, drawnA := tempCanvas[y][x].RGBA()
-					if drawnA > 0 { // Only draw if color is not fully transparent
+					if drawnA > 0 { 
 						img.Set(x,y, tempCanvas[y][x])
 					}
 				}
@@ -609,22 +609,22 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	// Draw selection indicators for the "select" tool
+	
 	if ui.State.CurrentAction == "select" && ui.State.SelectedShape != nil {
-		// Draw control points for the selected shape
+		
 		controlPoints := ui.State.SelectedShape.GetControlPoints()
-		indicatorColor := color.RGBA{0, 119, 255, 255} // Blue color for selection indicators
+		indicatorColor := color.RGBA{0, 119, 255, 255} 
 
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
 		}
 
-		// Special handling for rectangles to show resize handles
+		
 		if rect, isRect := ui.State.SelectedShape.(*models.Rectangle); isRect {
 			drawRectangleSelectionHandles(canvas, rect, indicatorColor)
 		} else {
-			// Regular selection indicators for other shapes
+			
 			for _, point := range controlPoints {
 				drawSelectionIndicator(canvas, point.X, point.Y, 5, indicatorColor)
 			}
@@ -671,9 +671,9 @@ func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Colo
 	}
 }
 
-// drawRectangleSelectionHandles draws handles at the corners of a selected rectangle
+
 func drawRectangleSelectionHandles(canvas [][]color.Color, rect *models.Rectangle, c color.Color) {
-	// Draw corner handles with larger size for easier grabbing
+	
 	points := rect.GetControlPoints()
 	for _, point := range points {
 		drawSelectionIndicator(canvas, point.X, point.Y, 8, c)
