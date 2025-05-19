@@ -111,15 +111,12 @@ func drawSemicircleOutline(canvas [][]color.Color, centerX, centerY, radius int,
 			angle := 2.0 * math.Pi * float64(i) / float64(numSegments)
 			x := centerX + int(float64(radius) * math.Cos(angle))
 			y := centerY + int(float64(radius) * math.Sin(angle))
-			
-			
+				
 			vx := math.Cos(angle)
 			vy := math.Sin(angle)
-			
-			
+				
 			dot := vx*dirX + vy*dirY
-			
-			
+				
 			if dot >= 0 && x >= 0 && y >= 0 && y < len(canvas) && x < len(canvas[0]) {
 					algorithms.SetPixel(canvas, x, y, c)
 			}
@@ -146,25 +143,18 @@ func (p *Pill) Contains(point Point) bool {
 	length := math.Sqrt(float64(dx*dx + dy*dy))
 	
 	if length > 0 {
-		
 		dirX := float64(dx) / length
 		dirY := float64(dy) / length
-		
 		
 		perpX := -dirY
 		perpY := dirX
 		
-		
 		vx := float64(point.X - p.Start.X)
 		vy := float64(point.Y - p.Start.Y)
-		
 		projDir := vx*dirX + vy*dirY
-		
 		if projDir >= 0 && projDir <= length {
-			
-			projPerp := math.Abs(vx*perpX + vy*perpY)
-			
-			return projPerp <= float64(p.Radius+5)
+				projPerp := math.Abs(vx*perpX + vy*perpY)
+				return projPerp <= float64(p.Radius+5)
 		}
 	}
 	

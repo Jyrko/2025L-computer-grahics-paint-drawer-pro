@@ -11,7 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// ResizePoint represents which control point is being dragged
+
 type ResizePoint int
 
 const (
@@ -65,12 +65,11 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	h.StartPoint = adjustedPoint
 	h.CurrentPoint = adjustedPoint
 	
-	// Reset resize state
+	
 	h.IsResizing = false
 	h.CurrentResizePoint = None
 	
 	if h.UI.State.CurrentAction == "select" && ev.Button == desktop.MouseButtonPrimary {
-		// Check if we're clicking on a resize handle of the currently selected rectangle
 		if h.UI.State.SelectedShape != nil {
 			if rect, isRect := h.UI.State.SelectedShape.(*models.Rectangle); isRect {
 				resizePoint := rect.GetResizePointAt(adjustedPoint)
@@ -83,11 +82,9 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 			}
 		}
 		
-		// If not resizing, proceed with normal selection
 		h.UI.State.SelectedShape = nil
 		h.UI.PillLengthContainer.Hide()
 		
-		// Find if we clicked on a shape
 		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
 			shape := h.UI.State.Shapes[i]
 			if shape.Contains(adjustedPoint) {
@@ -95,9 +92,7 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				h.IsMoving = true
 				h.MoveStartX = adjustedPoint.X
 				h.MoveStartY = adjustedPoint.Y
-				
-				// Handle special case for pill shapes
-				if pill, isPill := shape.(*models.Pill); isPill {
+								if pill, isPill := shape.(*models.Pill); isPill {
 					dx := pill.End.X - pill.Start.X
 					dy := pill.End.Y - pill.Start.Y
 					length := math.Sqrt(float64(dx*dx + dy*dy))
@@ -107,18 +102,15 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				} else if _, isRect := shape.(*models.Rectangle); isRect {
 					h.UI.StatusLabel.SetText("Rectangle selected. Drag corners to resize or drag center to move. Press Delete to remove.")
 				}
-				
-				h.UI.Canvas.Refresh()
+						h.UI.Canvas.Refresh()
 				return
 			}
 		}
-		
 		h.UI.StatusLabel.SetText("No shape selected.")
 		return
 	}
 	
 	if h.UI.State.CurrentAction == "polygon" && ev.Button == desktop.MouseButtonPrimary {
-		
 		if len(h.PolyPoints) == 0 {
 			h.PolyPoints = append(h.PolyPoints, h.StartPoint)
 			h.UI.StatusLabel.SetText("Creating polygon... Click to add points, press Enter to finish")
@@ -136,21 +128,15 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	
 	
 	if h.UI.State.CurrentAction == "pill" && ev.Button == desktop.MouseButtonPrimary {
-		
 		if pill, isPill := h.UI.State.CurrentShape.(*models.Pill); isPill {
 			if pill.Step == 1 {
-				
-				dx := adjustedPoint.X - pill.Start.X
+						dx := adjustedPoint.X - pill.Start.X
 				dy := adjustedPoint.Y - pill.Start.Y
 				pill.Radius = int(math.Sqrt(float64(dx*dx + dy*dy)))
 				pill.Step = 2
-				
-				
-				h.UI.PillLengthContainer.Show()
+								h.UI.PillLengthContainer.Show()
 				h.UI.PillLengthSlider.SetValue(float64(pill.Radius * 4)) 
-				
-				
-				if dx != 0 || dy != 0 {
+								if dx != 0 || dy != 0 {
 					length := float64(h.UI.PillLengthSlider.Value)
 					distance := math.Sqrt(float64(dx*dx + dy*dy))
 					dirX := float64(dx) / distance
@@ -158,28 +144,22 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 					pill.End.X = pill.Start.X + int(dirX * length)
 					pill.End.Y = pill.Start.Y + int(dirY * length)
 				} else {
-					
-					pill.End.X = pill.Start.X + int(h.UI.PillLengthSlider.Value)
+								pill.End.X = pill.Start.X + int(h.UI.PillLengthSlider.Value)
 					pill.End.Y = pill.Start.Y
 				}
-				
-				h.UI.StatusLabel.SetText("Pill radius set. Use slider to adjust length, click to finalize.")
+						h.UI.StatusLabel.SetText("Pill radius set. Use slider to adjust length, click to finalize.")
 				h.UI.Canvas.Refresh()
 				return
 			} else if pill.Step == 2 {
-				
-				pill.Step = 3
-				
-				
-				h.UI.State.Shapes = append(h.UI.State.Shapes, pill)
+						pill.Step = 3
+								h.UI.State.Shapes = append(h.UI.State.Shapes, pill)
 				h.UI.State.CurrentShape = nil
 				h.UI.StatusLabel.SetText("Pill added")
 				h.UI.Canvas.Refresh()
 				return
 			}
 		} else {
-			
-			pill := models.NewPill(adjustedPoint, 5, h.UI.State.CurrentColor)
+				pill := models.NewPill(adjustedPoint, 5, h.UI.State.CurrentColor)
 			h.UI.State.CurrentShape = pill
 			h.UI.StatusLabel.SetText("Pill started. Click to set radius.")
 			h.UI.Canvas.Refresh()
@@ -195,7 +175,6 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 		if h.UI.State.PenType == "brush" {
 			thickness = h.UI.State.BrushThickness 
 		}
-		
 		line := models.NewLine(
 			h.StartPoint,
 			h.StartPoint, 
@@ -218,12 +197,11 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 	case "rectangle":
 		rectangle := models.NewRectangle(
 			h.StartPoint,
-			h.StartPoint, // Initially both corners are the same
+			h.StartPoint, 
 			h.UI.State.CurrentColor,
 			h.UI.State.BrushThickness,
 		)
 		
-		// Apply fill settings if enabled
 		if h.UI.State.FillEnabled {
 			if h.UI.State.UseImageFill && h.UI.State.FillImage != nil {
 				rectangle.SetFillImage(h.UI.State.FillImage)
@@ -231,7 +209,6 @@ func (h *MouseHandler) MouseDown(ev *desktop.MouseEvent) {
 				rectangle.SetFillColor(h.UI.State.FillColor)
 			}
 		}
-		
 		h.UI.State.CurrentShape = rectangle
 		h.UI.StatusLabel.SetText("Drawing rectangle... Release to complete")
 	}
@@ -256,63 +233,47 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 		return
 	}
 	
-	// Handle clipping action
+	
 	if h.UI.State.CurrentAction == "clipping" && !h.IsDrawing {
 		adjustedPoint := h.adjustMousePosition(ev.PointEvent)
 		
-		// Find which shape was clicked
 		for i := len(h.UI.State.Shapes) - 1; i >= 0; i-- {
 			shape := h.UI.State.Shapes[i]
 			if shape.Contains(adjustedPoint) {
-				// Check if it's a polygon
-				polygon, isPolygon := shape.(*models.Polygon)
+						polygon, isPolygon := shape.(*models.Polygon)
 				if !isPolygon {
 					h.UI.StatusLabel.SetText("Clipping only works with polygons. Please select a polygon.")
 					return
 				}
-				
-				// Get the selected polygon (clipper)
-				selectedPoly, _ := h.UI.State.SelectedShape.(*models.Polygon)
-				
-				if !selectedPoly.IsConvex() {
+								selectedPoly, _ := h.UI.State.SelectedShape.(*models.Polygon)
+						if !selectedPoly.IsConvex() {
 					h.UI.StatusLabel.SetText("Only convex polygons can be used as clippers.")
 					return
 				}
-				// Check if the polygon to be clipped is convex
-				if !polygon.IsConvex() {
+						if !polygon.IsConvex() {
 					h.UI.StatusLabel.SetText("Only convex polygons can be clipped.")
 					return
 				}
 
-				
-				// Perform clipping using our utility function
-				clippedVertices := ClipPolygon(polygon.GetVertices(), selectedPoly.GetVertices())
-				
-				// Create new polygon with clipped vertices
-				if len(clippedVertices) >= 3 {
+								clippedVertices := ClipPolygon(polygon.GetVertices(), selectedPoly.GetVertices())
+								if len(clippedVertices) >= 3 {
 					clippedPoly := models.NewPolygon(clippedVertices, polygon.GetColor(), polygon.Thickness)
-					
-					// Copy fill properties
-					if polygon.IsFilled {
+											if polygon.IsFilled {
 						if polygon.UseImage {
 							clippedPoly.SetFillImage(polygon.FillImage)
 						} else {
 							clippedPoly.SetFillColor(polygon.FillColor)
 						}
 					}
-					
-					// Add the clipped polygon to the shapes
-					h.UI.State.Shapes = append(h.UI.State.Shapes, clippedPoly)
+											h.UI.State.Shapes = append(h.UI.State.Shapes, clippedPoly)
 					h.UI.Canvas.Refresh()
 					h.UI.StatusLabel.SetText("Polygon clipped successfully.")
 				} else {
 					h.UI.StatusLabel.SetText("Clipping result is not a valid polygon.")
 				}
-				
-				return
+						return
 			}
 		}
-		
 		return
 	}
 
@@ -327,7 +288,6 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
 		h.UI.Canvas.Refresh()
-		
 		switch h.UI.State.CurrentAction {
 		case "line":
 			h.UI.StatusLabel.SetText("Line added")
@@ -345,7 +305,7 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 	h.CurrentPoint = h.adjustMousePosition(ev.PointEvent)
 	
-	// Handle resizing of rectangle
+	
 	if h.IsResizing && h.UI.State.SelectedShape != nil {
 		if rect, isRect := h.UI.State.SelectedShape.(*models.Rectangle); isRect {
 			resizePoint := models.ResizePointType(h.CurrentResizePoint)
@@ -355,21 +315,17 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		return
 	}
 	
-	// Handle moving shapes
+	
 	if h.IsMoving && h.UI.State.SelectedShape != nil {
-		
 		deltaX := h.CurrentPoint.X - h.MoveStartX
 		deltaY := h.CurrentPoint.Y - h.MoveStartY
 		
-		
 		if deltaX != 0 || deltaY != 0 {
 			h.UI.State.SelectedShape.Move(deltaX, deltaY)
-			
-			
+				
 			h.MoveStartX = h.CurrentPoint.X
 			h.MoveStartY = h.CurrentPoint.Y
-			
-			h.UI.Canvas.Refresh()
+				h.UI.Canvas.Refresh()
 		}
 		return
 	}
@@ -391,7 +347,6 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 		h.UI.Canvas.Refresh()
 		
 	case *models.Rectangle:
-		// Update the bottom-right corner as the mouse moves
 		shape.BottomRight = h.CurrentPoint
 		h.UI.Canvas.Refresh()
 		
@@ -407,13 +362,11 @@ func (h *MouseHandler) MouseMoved(ev *desktop.MouseEvent) {
 
 
 func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
-	// Handle shape deletion with Delete or Backspace keys
+	
 	if (ev.Name == fyne.KeyDelete || ev.Name == fyne.KeyBackspace) && h.UI.State.CurrentAction == "select" && h.UI.State.SelectedShape != nil {
-		// Find and remove the selected shape
 		for i, shape := range h.UI.State.Shapes {
 			if shape == h.UI.State.SelectedShape {
-				// Remove shape from the slice
-				h.UI.State.Shapes = append(h.UI.State.Shapes[:i], h.UI.State.Shapes[i+1:]...)
+						h.UI.State.Shapes = append(h.UI.State.Shapes[:i], h.UI.State.Shapes[i+1:]...)
 				h.UI.State.SelectedShape = nil
 				h.UI.Canvas.Refresh()
 				h.UI.StatusLabel.SetText("Shape deleted")
@@ -424,10 +377,8 @@ func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
 	}
 	
 	if ev.Name == fyne.KeyReturn && h.UI.State.CurrentAction == "polygon" && len(h.PolyPoints) >= 3 {
-		
 		poly := models.NewPolygon(h.PolyPoints, h.UI.State.CurrentColor, 1)
 		
-		// Apply fill settings if enabled
 		if h.UI.State.FillEnabled {
 			if h.UI.State.UseImageFill && h.UI.State.FillImage != nil {
 				poly.SetFillImage(h.UI.State.FillImage)
@@ -435,14 +386,12 @@ func (h *MouseHandler) KeyDown(ev *fyne.KeyEvent) {
 				poly.SetFillColor(h.UI.State.FillColor)
 			}
 		}
-		
 		h.UI.State.Shapes = append(h.UI.State.Shapes, poly)
 		h.PolyPoints = nil
 		h.UI.State.CurrentShape = nil
 		h.UI.Canvas.Refresh()
 		h.UI.StatusLabel.SetText("Polygon added")
 	} else if ev.Name == fyne.KeyEscape {
-		
 		h.UI.State.CurrentShape = nil
 		h.IsDrawing = false
 		h.PolyPoints = nil
@@ -510,20 +459,20 @@ func (h *MouseHandler) TappedSecondary(ev *fyne.PointEvent) {
 
 
 func (h *MouseHandler) adjustMousePosition(ev fyne.PointEvent) models.Point {
-	// Get the position of the canvas within the window
+	
 	canvasPos := h.UI.Canvas.Position()
 	
-	// Calculate the position relative to the canvas's position
-	// by subtracting the canvas's position from the absolute mouse position
+	
+	
 	x := int(ev.Position.X - canvasPos.X)
 	y := int(ev.Position.Y - canvasPos.Y)
 	
-	// Get canvas size for bounds checking
+	
 	canvasSize := h.UI.Canvas.Size()
 	maxX := int(canvasSize.Width) - 1
 	maxY := int(canvasSize.Height) - 1
 	
-	// Constrain to canvas bounds
+	
 	if x < 0 {
 		x = 0
 	} else if x > maxX {

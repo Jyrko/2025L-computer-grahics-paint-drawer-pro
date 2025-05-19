@@ -15,11 +15,9 @@ func SimplifyPolygon(points []Point, threshold float64) []Point {
 		prev := result[len(result)-1]
 		current := points[i]
 		
-		
 		dx := float64(current.X - prev.X)
 		dy := float64(current.Y - prev.Y)
 		distSquared := dx*dx + dy*dy
-		
 		if distSquared > threshold*threshold {
 			result = append(result, current)
 		}
@@ -29,14 +27,11 @@ func SimplifyPolygon(points []Point, threshold float64) []Point {
 	if len(result) > 2 {
 		last := result[len(result)-1]
 		first := result[0]
-		
 		dx := float64(last.X - first.X)
 		dy := float64(last.Y - first.Y)
 		distSquared := dx*dx + dy*dy
-		
 		if distSquared < threshold*threshold {
-			
-			result = result[:len(result)-1]
+				result = result[:len(result)-1]
 		}
 	}
 	
@@ -56,15 +51,12 @@ func IsPolygonSimple(vertices []Point) bool {
 		
 	for i := 0; i < n; i++ {
 		i1 := (i + 1) % n
-		
 		for j := i + 2; j < n + i - 1; j++ {
 			j1 := (j + 1) % n
-			
-			if i1 == j || i == j1 {
+				if i1 == j || i == j1 {
 				continue
 			}
-			
-			if doLinesIntersect(vertices[i], vertices[i1], vertices[j % n], vertices[j1 % n]) {
+				if doLinesIntersect(vertices[i], vertices[i1], vertices[j % n], vertices[j1 % n]) {
 				return false
 			}
 		}

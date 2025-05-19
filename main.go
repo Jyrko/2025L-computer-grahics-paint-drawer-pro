@@ -24,13 +24,13 @@ func main() {
 	})
 	
 	
-	// Create a container that allows the canvas to resize and position correctly
+	
 	drawingArea := container.NewStack(mouseHandler, mainUI.Canvas)
 	
-	// Use a padding container to ensure canvas is properly centered
+	
 	paddedDrawingArea := container.NewPadded(drawingArea)
 	
-	// Setup main container with proper layout
+	
 	mainUI.Container = container.NewBorder(
 		nil, 
 		container.NewHBox(mainUI.StatusLabel), 

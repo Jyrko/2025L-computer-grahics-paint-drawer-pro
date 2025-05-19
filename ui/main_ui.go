@@ -56,7 +56,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		pillLengthValue.SetText(fmt.Sprintf("%d", length))
 		ui.StatusLabel.SetText(fmt.Sprintf("Pill length set to %d", length))
 		
-		
 		ui.updatePillLength(length)
 	}
 	ui.PillLengthContainer = container.NewBorder(
@@ -69,9 +68,9 @@ func NewMainUI(window fyne.Window) *MainUI {
 		return ui.renderCanvas(w, h)
 	})
 
-	// Set both min size and a fixed size for the canvas to ensure proper positioning
+	
 	ui.Canvas.SetMinSize(fyne.NewSize(600, 500))
-	// Make the canvas resize with the window
+	
 	ui.Canvas.Resize(fyne.NewSize(600, 500))
 
 	
@@ -112,9 +111,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.CurrentToolText.SetText("Current tool: Pill")
 		ui.StatusLabel.SetText("Pill tool selected: Click to place first end, then set radius, then place second end")
 		
-		
 		ui.PillLengthContainer.Show()
-		
 		ui.PillLengthSlider.SetValue(100)
 	})
 
@@ -122,7 +119,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.State.CurrentAction = "select"
 		ui.CurrentToolText.SetText("Current tool: Select")
 		ui.StatusLabel.SetText("Select tool active")
-		
 		
 		ui.PillLengthContainer.Hide()
 	})
@@ -133,7 +129,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.StatusLabel.SetText("Canvas cleared")
 	})
 	
-	// File save button
+	
 	saveBtn := widget.NewButton("Save", func() {
 		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 			if err != nil {
@@ -141,30 +137,25 @@ func NewMainUI(window fyne.Window) *MainUI {
 				return
 			}
 			if writer == nil {
-				return // User cancelled
+				return 
 			}
-			
-			// Close the writer as we'll use our own file handler
+				
 			writer.Close()
-			
-			// Get the file path
+				
 			filePath := writer.URI().Path()
-			
-			// Save shapes to the file
+				
 			err = ui.SaveShapesToFile(filePath)
 			if err != nil {
 				dialog.ShowError(err, ui.Window)
 				return
 			}
-			
-			ui.StatusLabel.SetText("Drawing saved to file")
+				ui.StatusLabel.SetText("Drawing saved to file")
 		}, ui.Window)
-		
 		fd.SetFileName("drawing.json")
 		fd.Show()
 	})
 	
-	// File load button
+	
 	loadBtn := widget.NewButton("Load", func() {
 		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
@@ -172,65 +163,53 @@ func NewMainUI(window fyne.Window) *MainUI {
 				return
 			}
 			if reader == nil {
-				return // User cancelled
+				return 
 			}
-			
-			// Close the reader as we'll use our own file handler
+				
 			reader.Close()
-			
-			// Get the file path
+				
 			filePath := reader.URI().Path()
-			
-			// Load shapes from the file
+				
 			err = ui.LoadShapesFromFile(filePath)
 			if err != nil {
 				dialog.ShowError(err, ui.Window)
 				return
 			}
-			
-			ui.StatusLabel.SetText("Drawing loaded from file")
+				ui.StatusLabel.SetText("Drawing loaded from file")
 		}, ui.Window)
-		
 		fd.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
 		fd.Show()
 	})
 	
-	// Clipping button
+	
 	clipBtn := widget.NewButton("Clip Polygon", func() {
-		// Enable only when we have a selected shape that's a polygon
 		if ui.State.SelectedShape == nil {
 			dialog.ShowInformation("Clipping", "Please select a polygon to clip first.", ui.Window)
 			return
 		}
-		
 		selectedPoly, isPolygon := ui.State.SelectedShape.(*models.Polygon)
 		if !isPolygon {
 			dialog.ShowInformation("Clipping", "Only polygons can be clipped. Please select a polygon.", ui.Window)
 			return
 		}
 		
-		// Convert to algorithm points for simplification
 		vertices := selectedPoly.GetVertices()
 		algVertices := make([]algorithms.Point, len(vertices))
 		for i, v := range vertices {
 			algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
 		}
 		
-		// Simplify the polygon to remove possible duplicate points
 		simplified := algorithms.SimplifyPolygon(algVertices, 2.0)
 		
-		// Display simplified vertex count
 		originalCount := len(vertices)
 		simplifiedCount := len(simplified)
 		
-		// Check if the simplified polygon is convex
 		if !algorithms.IsPolygonConvex(simplified) {
 			message := fmt.Sprintf("Only convex polygons can be used for clipping. Selected polygon has %d vertices (simplified from %d).", 
 				simplifiedCount, originalCount)
 			dialog.ShowInformation("Clipping", message, ui.Window)
 			return
 		}
-		
 		ui.State.CurrentAction = "clipping"
 		ui.CurrentToolText.SetText("Current tool: Clipping")
 		ui.StatusLabel.SetText("Clipping mode active. Select a polygon to clip against " + 
@@ -276,39 +255,33 @@ func NewMainUI(window fyne.Window) *MainUI {
 		nil, nil, thicknessLabel, thicknessValue, thicknessSlider,
 	)
 
-	// Fill controls
+	
 	fillCheck := widget.NewCheck("Fill Shapes", func(checked bool) {
 		ui.State.FillEnabled = checked
 		ui.StatusLabel.SetText(fmt.Sprintf("Fill %s", map[bool]string{true: "enabled", false: "disabled"}[checked]))
 	})
 	
 	fillColorBtn := widget.NewButton("Fill Color", func() {
-		// Create RGB sliders for fill color
 		rSlider := widget.NewSlider(0, 255)
 		gSlider := widget.NewSlider(0, 255)
 		bSlider := widget.NewSlider(0, 255)
 
-		// Set initial values to current fill color or default
 		fillColor := ui.State.FillColor
 		if fillColor == nil {
 			fillColor = color.RGBA{255, 255, 255, 255}
 		}
-		
 		r, g, b, _ := fillColor.RGBA()
 		rSlider.Value = float64(uint8(r))
 		gSlider.Value = float64(uint8(g))
 		bSlider.Value = float64(uint8(b))
 
-		// Color preview
 		preview := canvas.NewRectangle(fillColor)
 		preview.SetMinSize(fyne.NewSize(100, 60))
 
-		// Labels
 		rLabel := widget.NewLabel(fmt.Sprintf("R: %d", uint8(r)))
 		gLabel := widget.NewLabel(fmt.Sprintf("G: %d", uint8(g)))
 		bLabel := widget.NewLabel(fmt.Sprintf("B: %d", uint8(b)))
 
-		// Update function
 		updateFillColor := func() {
 			r := uint8(rSlider.Value)
 			g := uint8(gSlider.Value)
@@ -323,7 +296,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 			bLabel.SetText(fmt.Sprintf("B: %d", b))
 			}
 
-		// Slider change handlers
 		rSlider.OnChanged = func(value float64) {
 			updateFillColor()
 		}
@@ -334,7 +306,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 			updateFillColor()
 		}
 
-		// Dialog content
 		content := container.NewVBox(
 			preview,
 			widget.NewSeparator(),
@@ -346,7 +317,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 			bSlider,
 			)
 
-		// Create and show dialog
 		customDialog := dialog.NewCustom("Choose Fill Color", "Apply", content, ui.Window)
 		customDialog.SetOnClosed(func() {
 			newColor := color.RGBA{
@@ -357,8 +327,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 			}
 			ui.State.FillColor = newColor
 			ui.StatusLabel.SetText("Fill color updated")
-			
-			// If a shape is selected, apply the fill color
+				
 			if ui.State.SelectedShape != nil {
 				switch s := ui.State.SelectedShape.(type) {
 				case *models.Polygon:
@@ -381,31 +350,25 @@ func NewMainUI(window fyne.Window) *MainUI {
 			if reader == nil {
 				return
 			}
-			
-			imgData, _, err := image.Decode(reader)
+				imgData, _, err := image.Decode(reader)
 			if err != nil {
 				dialog.ShowError(err, ui.Window)
 				return
 			}
-			
-			reader.Close()
-			
-			bounds := imgData.Bounds()
+				reader.Close()
+				bounds := imgData.Bounds()
 			width, height := bounds.Max.X, bounds.Max.Y
-			
-			fillImage := make([][]color.Color, height)
+				fillImage := make([][]color.Color, height)
 			for y := 0; y < height; y++ {
 				fillImage[y] = make([]color.Color, width)
 				for x := 0; x < width; x++ {
 					fillImage[y][x] = imgData.At(x, y)
 				}
 			}
-			
-			ui.State.FillImage = fillImage
+				ui.State.FillImage = fillImage
 			ui.State.UseImageFill = true
 			ui.StatusLabel.SetText("Fill image loaded")
-			
-			// Apply to selected shape if any
+				
 			if ui.State.SelectedShape != nil {
 				switch s := ui.State.SelectedShape.(type) {
 				case *models.Polygon:
@@ -435,8 +398,8 @@ func NewMainUI(window fyne.Window) *MainUI {
 		selectBtn,
 		widget.NewSeparator(),
 		clearBtn,
-		saveBtn, // Add save button to the tools container
-		loadBtn, // Add load button to the tools container
+		saveBtn, 
+		loadBtn, 
 		clipBtn,
 		widget.NewSeparator(),
 		aaCheck,
@@ -521,28 +484,22 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 
 	
 	if ui.State.CurrentAction == "select" && ui.State.SelectedShape != nil {
-		
 		controlPoints := ui.State.SelectedShape.GetControlPoints()
 		
-		
 		indicatorColor := color.RGBA{0, 119, 255, 255} 
-		
 		
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
 		}
 		
-		// Special handling for rectangles to show resize handles
 		if rect, isRect := ui.State.SelectedShape.(*models.Rectangle); isRect {
 			drawRectangleSelectionHandles(canvas, rect, indicatorColor)
 		} else {
-			// Regular selection indicators for other shapes
-			for _, point := range controlPoints {
+				for _, point := range controlPoints {
 				drawSelectionIndicator(canvas, point.X, point.Y, 5, indicatorColor)
 			}
 		}
-		
 		
 		for x := 0; x < w; x++ {
 			for y := 0; y < h; y++ {
@@ -568,14 +525,11 @@ func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Colo
 	
 	for dy := -halfSize; dy <= halfSize; dy++ {
 		for dx := -halfSize; dx <= halfSize; dx++ {
-			
-			px := x + dx
+				px := x + dx
 			py := y + dy
-			
-			
-			if py >= 0 && py < len(canvas) && px >= 0 && px < len(canvas[0]) {
 				
-				if dx == 0 && dy == 0 {
+			if py >= 0 && py < len(canvas) && px >= 0 && px < len(canvas[0]) {
+						if dx == 0 && dy == 0 {
 					canvas[py][px] = c
 				} else if dx == -halfSize || dx == halfSize || dy == -halfSize || dy == halfSize {
 					canvas[py][px] = c
@@ -585,9 +539,9 @@ func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Colo
 	}
 }
 
-// drawRectangleSelectionHandles draws handles at the corners of a selected rectangle
+
 func drawRectangleSelectionHandles(canvas [][]color.Color, rect *models.Rectangle, c color.Color) {
-	// Draw corner handles with larger size for easier grabbing
+	
 	points := rect.GetControlPoints()
 	for _, point := range points {
 		drawSelectionIndicator(canvas, point.X, point.Y, 8, c)
@@ -599,48 +553,37 @@ func (ui *MainUI) updatePillLength(length int) {
 	
 	if ui.State.CurrentAction == "select" && ui.State.SelectedShape != nil {
 		if pill, ok := ui.State.SelectedShape.(*models.Pill); ok {
-			
-			dx := pill.End.X - pill.Start.X
+				dx := pill.End.X - pill.Start.X
 			dy := pill.End.Y - pill.Start.Y
 			currentLength := math.Sqrt(float64(dx*dx + dy*dy))
-			
-			
+				
 			if currentLength <= 0 {
 				return
 			}
-			
-			
+				
 			dirX := float64(dx) / currentLength
 			dirY := float64(dy) / currentLength
-			
-			
+				
 			pill.End.X = pill.Start.X + int(dirX * float64(length))
 			pill.End.Y = pill.Start.Y + int(dirY * float64(length))
-			
-			ui.Canvas.Refresh()
+				ui.Canvas.Refresh()
 		}
 	} else if ui.State.CurrentShape != nil {
-		
 		if pill, ok := ui.State.CurrentShape.(*models.Pill); ok && pill.Step >= 2 {
-			
-			dx := pill.End.X - pill.Start.X
+				dx := pill.End.X - pill.Start.X
 			dy := pill.End.Y - pill.Start.Y
 			currentLength := math.Sqrt(float64(dx*dx + dy*dy))
-			
-			
+				
 			if currentLength <= 0 {
 				return
 			}
-			
-			
+				
 			dirX := float64(dx) / currentLength
 			dirY := float64(dy) / currentLength
-			
-			
+				
 			pill.End.X = pill.Start.X + int(dirX * float64(length))
 			pill.End.Y = pill.Start.Y + int(dirY * float64(length))
-			
-			ui.Canvas.Refresh()
+				ui.Canvas.Refresh()
 		}
 	}
 }
