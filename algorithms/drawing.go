@@ -231,8 +231,7 @@ func ThickLine(canvas [][]color.Color, x0, y0, x1, y1 int, c color.Color, thickn
 		for by := 0; by < thickness; by++ {
 			for bx := 0; bx < thickness; bx++ {
 				if brush[by][bx] {
-			
-					nx := p.X + bx - radius
+						nx := p.X + bx - radius
 					ny := p.Y + by - radius
 					SetPixel(canvas, nx, ny, c)
 				}

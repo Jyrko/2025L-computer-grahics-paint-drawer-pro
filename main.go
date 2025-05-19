@@ -9,9 +9,9 @@ import (
 )
 
 func main() {
-	a := app.New()
+	a := app.NewWithID("com.university.paintdrawerpro")
 	w := a.NewWindow("Paint Drawer Pro")
-	w.Resize(fyne.NewSize(800, 600))
+	w.Resize(fyne.NewSize(1024, 768))
 	
 	mainUI := ui.NewMainUI(w)
 	
@@ -24,7 +24,11 @@ func main() {
 	})
 	
 	
+	
 	drawingArea := container.NewStack(mouseHandler, mainUI.Canvas)
+	
+	
+	paddedDrawingArea := container.NewPadded(drawingArea)
 	
 	
 	mainUI.Container = container.NewBorder(
@@ -32,8 +36,7 @@ func main() {
 		container.NewHBox(mainUI.StatusLabel), 
 		mainUI.ToolsContainer, 
 		nil, 
-		drawingArea, 
-	)
+		paddedDrawingArea)
 	
 	w.SetContent(mainUI.Container)
 	w.ShowAndRun()

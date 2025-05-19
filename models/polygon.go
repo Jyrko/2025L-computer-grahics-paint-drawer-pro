@@ -3,6 +3,7 @@ package models
 import (
 	"image/color"
 	"math"
+	"paint-drawer-pro/algorithms"
 )
 
 
@@ -14,6 +15,7 @@ func NewPolygon(vertices []Point, color color.Color, thickness int) *Polygon {
 		Vertices:  vertices,
 		Color:     color,
 		Thickness: thickness,
+		IsFilled:  false,
 	}
 }
 
@@ -23,6 +25,11 @@ func (p *Polygon) Draw(canvas [][]color.Color, antiAliasing bool) {
 		return 
 	}
 
+	
+	if p.IsFilled {
+		p.drawFill(canvas)
+	}
+	
 	
 	for i := 0; i < len(p.Vertices); i++ {
 		start := p.Vertices[i]
@@ -37,6 +44,21 @@ func (p *Polygon) Draw(canvas [][]color.Color, antiAliasing bool) {
 				drawThickLine(canvas, start.X, start.Y, end.X, end.Y, p.Color, p.Thickness)
 			}
 		}
+	}
+}
+
+
+func (p *Polygon) drawFill(canvas [][]color.Color) {
+	
+	algVertices := make([]algorithms.Point, len(p.Vertices))
+	for i, v := range p.Vertices {
+		algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
+	}
+	
+	if p.UseImage && p.FillImage != nil {
+		algorithms.FillPolygonWithImage(canvas, algVertices, p.FillImage)
+	} else {
+		algorithms.EdgeTableFill(canvas, algVertices, p.FillColor)
 	}
 }
 
@@ -104,20 +126,48 @@ func (p *Polygon) GetColor() color.Color {
 
 
 func (p *Polygon) Serialize() map[string]interface{} {
-	r, g, b, a := p.Color.RGBA()
-	
-	vertices := make([]int, len(p.Vertices)*2)
-	for i, vertex := range p.Vertices {
-		vertices[i*2] = vertex.X
-		vertices[i*2+1] = vertex.Y
-	}
-	
-	return map[string]interface{}{
+	serMap := map[string]interface{}{
 		"type":      "polygon",
-		"vertices":  vertices,
-		"color":     []uint32{r, g, b, a},
 		"thickness": p.Thickness,
+		"isFilled":  p.IsFilled,
+		"useImage":  p.UseImage,
 	}
+	
+	
+	vertices := make([]map[string]interface{}, len(p.Vertices))
+	for i, vertex := range p.Vertices {
+		vertices[i] = map[string]interface{}{
+			"X": vertex.X,
+			"Y": vertex.Y,
+		}
+	}
+	serMap["vertices"] = vertices
+	
+	
+	if p.Color != nil {
+		r, g, b, a := p.Color.RGBA()
+		serMap["color"] = map[string]interface{}{
+			"R": uint8(r),
+			"G": uint8(g),
+			"B": uint8(b),
+			"A": uint8(a),
+		}
+	}
+	
+	if p.IsFilled && !p.UseImage && p.FillColor != nil {
+		r, g, b, a := p.FillColor.RGBA()
+		serMap["fillColor"] = map[string]interface{}{
+			"R": uint8(r),
+			"G": uint8(g),
+			"B": uint8(b),
+			"A": uint8(a),
+		}
+	}
+	
+	
+	
+	
+	return serMap
 }
 
 
@@ -127,5 +177,72 @@ func (p *Polygon) Clone() Shape {
 		vertices[i] = Point{X: vertex.X, Y: vertex.Y}
 	}
 	
-	return NewPolygon(vertices, p.Color, p.Thickness)
+	clone := NewPolygon(vertices, p.Color, p.Thickness)
+	clone.FillColor = p.FillColor
+	clone.IsFilled = p.IsFilled
+	clone.UseImage = p.UseImage
+	
+	
+	if p.UseImage && p.FillImage != nil {
+		height := len(p.FillImage)
+		if height > 0 {
+			width := len(p.FillImage[0])
+			clone.FillImage = make([][]color.Color, height)
+			for y := 0; y < height; y++ {
+				clone.FillImage[y] = make([]color.Color, width)
+				for x := 0; x < width; x++ {
+					clone.FillImage[y][x] = p.FillImage[y][x]
+				}
+			}
+		}
+	}
+	
+	return clone
+}
+
+
+func (p *Polygon) SetFillColor(c color.Color) {
+	p.FillColor = c
+	p.IsFilled = true
+	p.UseImage = false
+}
+
+
+func (p *Polygon) SetFillImage(img [][]color.Color) {
+	p.FillImage = img
+	p.IsFilled = true
+	p.UseImage = true
+}
+
+
+func (p *Polygon) DisableFill() {
+	p.IsFilled = false
+}
+
+
+
+func (p *Polygon) IsConvex() bool {
+	if len(p.Vertices) <= 3 {
+		return len(p.Vertices) == 3
+	}
+	
+	
+	vertices := p.Vertices
+	
+	
+	algVertices := make([]algorithms.Point, len(vertices))
+	for i, v := range vertices {
+		algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
+	}
+	
+	
+	simplified := algorithms.SimplifyPolygon(algVertices, 2.0)
+	
+	
+	return algorithms.IsPolygonConvex(simplified)
+}
+
+
+func (p *Polygon) GetVertices() []Point {
+	return p.Vertices
 }
