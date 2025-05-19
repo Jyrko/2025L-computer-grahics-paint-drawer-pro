@@ -274,11 +274,16 @@ func (h *MouseHandler) MouseUp(ev *desktop.MouseEvent) {
 				// Get the selected polygon (clipper)
 				selectedPoly, _ := h.UI.State.SelectedShape.(*models.Polygon)
 				
+				if !selectedPoly.IsConvex() {
+					h.UI.StatusLabel.SetText("Only convex polygons can be used as clippers.")
+					return
+				}
 				// Check if the polygon to be clipped is convex
 				if !polygon.IsConvex() {
 					h.UI.StatusLabel.SetText("Only convex polygons can be clipped.")
 					return
 				}
+
 				
 				// Perform clipping using our utility function
 				clippedVertices := ClipPolygon(polygon.GetVertices(), selectedPoly.GetVertices())
