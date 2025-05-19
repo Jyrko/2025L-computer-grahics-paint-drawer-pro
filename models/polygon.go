@@ -47,7 +47,7 @@ func (p *Polygon) Draw(canvas [][]color.Color, antiAliasing bool) {
 	}
 }
 
-// drawFill fills the polygon with a solid color or an image
+
 func (p *Polygon) drawFill(canvas [][]color.Color) {
 	// Convert vertices to algorithms.Point type
 	algVertices := make([]algorithms.Point, len(p.Vertices))
@@ -55,10 +55,15 @@ func (p *Polygon) drawFill(canvas [][]color.Color) {
 		algVertices[i] = algorithms.Point{X: v.X, Y: v.Y}
 	}
 	
+	// First simplify the polygon to remove duplicate or near-duplicate vertices
+	simplifiedVertices := algorithms.SimplifyPolygon(algVertices, 2.0)
+	
 	if p.UseImage && p.FillImage != nil {
-		algorithms.FillPolygonWithImage(canvas, algVertices, p.FillImage)
+		// Use the more robust parity-based fill algorithm for image filling
+		algorithms.ParityFillPolygonWithImage(canvas, simplifiedVertices, p.FillImage)
 	} else {
-		algorithms.EdgeTableFill(canvas, algVertices, p.FillColor)
+		// Use the more robust parity-based fill algorithm for solid color filling
+		algorithms.ParityFillPolygon(canvas, simplifiedVertices, p.FillColor)
 	}
 }
 
@@ -200,27 +205,27 @@ func (p *Polygon) Clone() Shape {
 	return clone
 }
 
-// SetFillColor sets the fill color of the polygon
+
 func (p *Polygon) SetFillColor(c color.Color) {
 	p.FillColor = c
 	p.IsFilled = true
 	p.UseImage = false
 }
 
-// SetFillImage sets an image to fill the polygon
+
 func (p *Polygon) SetFillImage(img [][]color.Color) {
 	p.FillImage = img
 	p.IsFilled = true
 	p.UseImage = true
 }
 
-// DisableFill disables filling the polygon
+
 func (p *Polygon) DisableFill() {
 	p.IsFilled = false
 }
 
-// IsConvex checks if this polygon is convex
-// Will attempt to simplify the polygon first to remove duplicate or near-duplicate vertices
+
+
 func (p *Polygon) IsConvex() bool {
 	if len(p.Vertices) <= 3 {
 		// Triangles are always convex as long as they have distinct points
@@ -243,7 +248,7 @@ func (p *Polygon) IsConvex() bool {
 	return algorithms.IsPolygonConvex(simplified)
 }
 
-// GetVertices returns the vertices of the polygon
+
 func (p *Polygon) GetVertices() []Point {
 	return p.Vertices
 }

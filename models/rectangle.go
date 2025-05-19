@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-// Rectangle represents a rectangle shape
+
 type Rectangle struct {
 	TopLeft     Point
 	BottomRight Point
@@ -17,7 +17,7 @@ type Rectangle struct {
 	UseImage    bool
 }
 
-// NewRectangle creates a new rectangle with the given corner points and color
+
 func NewRectangle(topLeft, bottomRight Point, color color.Color, thickness int) *Rectangle {
 	if thickness <= 0 {
 		thickness = 1
@@ -44,7 +44,7 @@ func NewRectangle(topLeft, bottomRight Point, color color.Color, thickness int) 
 	}
 }
 
-// Draw draws the rectangle on the canvas
+
 func (r *Rectangle) Draw(canvas [][]color.Color, antiAliasing bool) {
 	// Draw filled rectangle first if enabled
 	if r.IsFilled {
@@ -76,7 +76,7 @@ func (r *Rectangle) Draw(canvas [][]color.Color, antiAliasing bool) {
 	}
 }
 
-// drawFill fills the rectangle with a solid color or an image
+
 func (r *Rectangle) drawFill(canvas [][]color.Color) {
 	startX := r.TopLeft.X + 1
 	endX := r.BottomRight.X - 1
@@ -106,7 +106,7 @@ func (r *Rectangle) drawFill(canvas [][]color.Color) {
 	}
 }
 
-// Contains checks if a point is contained within or on the rectangle
+
 func (r *Rectangle) Contains(p Point) bool {
 	// Check if point is near any of the corners (for vertex selection)
 	corners := []Point{
@@ -158,7 +158,7 @@ func (r *Rectangle) Contains(p Point) bool {
 	return false
 }
 
-// GetControlPoints returns the control points of the rectangle (four corners)
+
 func (r *Rectangle) GetControlPoints() []Point {
 	return []Point{
 		r.TopLeft,
@@ -168,7 +168,7 @@ func (r *Rectangle) GetControlPoints() []Point {
 	}
 }
 
-// Move moves the rectangle by the specified delta
+
 func (r *Rectangle) Move(deltaX, deltaY int) {
 	r.TopLeft.X += deltaX
 	r.TopLeft.Y += deltaY
@@ -176,41 +176,41 @@ func (r *Rectangle) Move(deltaX, deltaY int) {
 	r.BottomRight.Y += deltaY
 }
 
-// SetColor sets the color of the rectangle outline
+
 func (r *Rectangle) SetColor(c color.Color) {
 	r.Color = c
 }
 
-// GetColor returns the color of the rectangle outline
+
 func (r *Rectangle) GetColor() color.Color {
 	return r.Color
 }
 
-// SetFillColor sets the fill color of the rectangle
+
 func (r *Rectangle) SetFillColor(c color.Color) {
 	r.FillColor = c
 	r.IsFilled = true
 	r.UseImage = false
 }
 
-// SetFillImage sets an image to fill the rectangle
+
 func (r *Rectangle) SetFillImage(img [][]color.Color) {
 	r.FillImage = img
 	r.IsFilled = true
 	r.UseImage = true
 }
 
-// DisableFill disables filling the rectangle
+
 func (r *Rectangle) DisableFill() {
 	r.IsFilled = false
 }
 
-// IsConvex returns true since rectangles are always convex
+
 func (r *Rectangle) IsConvex() bool {
 	return true
 }
 
-// GetVertices returns the vertices of the rectangle as a slice of Points
+
 func (r *Rectangle) GetVertices() []Point {
 	return []Point{
 		r.TopLeft,
@@ -220,7 +220,7 @@ func (r *Rectangle) GetVertices() []Point {
 	}
 }
 
-// Serialize converts the rectangle to a map for serialization
+
 func (r *Rectangle) Serialize() map[string]interface{} {
 	serMap := map[string]interface{}{
 		"type":      "rectangle",
@@ -267,7 +267,7 @@ func (r *Rectangle) Serialize() map[string]interface{} {
 	return serMap
 }
 
-// Clone creates a copy of the rectangle
+
 func (r *Rectangle) Clone() Shape {
 	newRect := &Rectangle{
 		TopLeft:     Point{X: r.TopLeft.X, Y: r.TopLeft.Y},
@@ -297,7 +297,7 @@ func (r *Rectangle) Clone() Shape {
 	return newRect
 }
 
-// GetResizePointAt determines which resize point (if any) is at the given coordinates
+
 func (r *Rectangle) GetResizePointAt(p Point) ResizePointType {
 	const selectionRadius = 10 // Pixel radius for resize handle selection
 
@@ -335,7 +335,7 @@ func (r *Rectangle) GetResizePointAt(p Point) ResizePointType {
 	return None
 }
 
-// ResizeByCorner resizes the rectangle by moving the specified corner
+
 func (r *Rectangle) ResizeByCorner(cornerType ResizePointType, newPoint Point) {
 	switch cornerType {
 	case TopLeft:

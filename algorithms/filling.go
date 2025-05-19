@@ -6,14 +6,14 @@ import (
 	"sort"
 )
 
-// Edge represents an edge in the Edge Table algorithm
+
 type Edge struct {
-	YMax   int     // Maximum y-coordinate of the edge
-	XOfYMin int     // X-coordinate at the minimum y-coordinate
-	SlopeInv float64 // 1/slope (dx/dy)
+	YMax      int     // Maximum y-coordinate of the edge
+	X         float64 // Current x-coordinate (floating point for accuracy)
+	SlopeInv  float64 // 1/slope (dx/dy)
 }
 
-// EdgeTableFill implements the Edge Table polygon filling algorithm
+
 func EdgeTableFill(canvas [][]color.Color, vertices []Point, fillColor color.Color) {
 	if len(vertices) < 3 {
 		return // Need at least 3 vertices for a polygon
@@ -55,8 +55,8 @@ func EdgeTableFill(canvas [][]color.Color, vertices []Point, fillColor color.Col
 		
 		// Create edge and add to edge table at its yMin
 		edge := Edge{
-			YMax:    v2.Y,
-			XOfYMin: v1.X,
+			YMax:     v2.Y,
+			X:        float64(v1.X),
 			SlopeInv: slopeInv,
 		}
 		
@@ -85,14 +85,14 @@ func EdgeTableFill(canvas [][]color.Color, vertices []Point, fillColor color.Col
 		
 		// Sort edges by x-coordinate
 		sort.Slice(activeEdgeList, func(i, j int) bool {
-			return activeEdgeList[i].XOfYMin < activeEdgeList[j].XOfYMin
+			return activeEdgeList[i].X < activeEdgeList[j].X
 		})
 		
 		// Fill between pairs of edges
 		for i := 0; i < len(activeEdgeList)-1; i += 2 {
 			if i+1 < len(activeEdgeList) {
-				xStart := int(math.Floor(float64(activeEdgeList[i].XOfYMin)))
-				xEnd := int(math.Ceil(float64(activeEdgeList[i+1].XOfYMin)))
+				xStart := int(math.Floor(activeEdgeList[i].X))
+				xEnd := int(math.Ceil(activeEdgeList[i+1].X))
 				
 				for x := xStart; x <= xEnd; x++ {
 					if y >= 0 && y < len(canvas) && x >= 0 && x < len(canvas[0]) {
@@ -102,14 +102,14 @@ func EdgeTableFill(canvas [][]color.Color, vertices []Point, fillColor color.Col
 			}
 		}
 		
-		// Update x-coordinates for next scanline
+		// Update x-coordinates for next scanline with better precision
 		for i := range activeEdgeList {
-			activeEdgeList[i].XOfYMin += int(math.Round(activeEdgeList[i].SlopeInv))
+			activeEdgeList[i].X += activeEdgeList[i].SlopeInv
 		}
 	}
 }
 
-// FillPolygonWithImage fills a polygon with an image texture using the Edge Table algorithm
+
 func FillPolygonWithImage(canvas [][]color.Color, vertices []Point, fillImage [][]color.Color) {
 	if len(vertices) < 3 || fillImage == nil || len(fillImage) == 0 || len(fillImage[0]) == 0 {
 		return // Need valid inputs
@@ -173,8 +173,8 @@ func FillPolygonWithImage(canvas [][]color.Color, vertices []Point, fillImage []
 		
 		// Create edge and add to edge table at its yMin
 		edge := Edge{
-			YMax:    v2.Y,
-			XOfYMin: v1.X,
+			YMax:     v2.Y,
+			X:        float64(v1.X),
 			SlopeInv: slopeInv,
 		}
 		
@@ -203,14 +203,14 @@ func FillPolygonWithImage(canvas [][]color.Color, vertices []Point, fillImage []
 		
 		// Sort edges by x-coordinate
 		sort.Slice(activeEdgeList, func(i, j int) bool {
-			return activeEdgeList[i].XOfYMin < activeEdgeList[j].XOfYMin
+			return activeEdgeList[i].X < activeEdgeList[j].X
 		})
 		
 		// Fill between pairs of edges
 		for i := 0; i < len(activeEdgeList)-1; i += 2 {
 			if i+1 < len(activeEdgeList) {
-				xStart := int(math.Floor(float64(activeEdgeList[i].XOfYMin)))
-				xEnd := int(math.Ceil(float64(activeEdgeList[i+1].XOfYMin)))
+				xStart := int(math.Floor(activeEdgeList[i].X))
+				xEnd := int(math.Ceil(activeEdgeList[i+1].X))
 				
 				for x := xStart; x <= xEnd; x++ {
 					if y >= 0 && y < len(canvas) && x >= 0 && x < len(canvas[0]) {
@@ -236,9 +236,9 @@ func FillPolygonWithImage(canvas [][]color.Color, vertices []Point, fillImage []
 			}
 		}
 		
-		// Update x-coordinates for next scanline
+		// Update x-coordinates for next scanline with better precision
 		for i := range activeEdgeList {
-			activeEdgeList[i].XOfYMin += int(math.Round(activeEdgeList[i].SlopeInv))
+			activeEdgeList[i].X += activeEdgeList[i].SlopeInv
 		}
 	}
 }

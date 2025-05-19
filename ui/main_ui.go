@@ -585,7 +585,7 @@ func drawSelectionIndicator(canvas [][]color.Color, x, y, size int, c color.Colo
 	}
 }
 
-// drawRectangleSelectionHandles draws handles at the corners of a selected rectangle
+
 func drawRectangleSelectionHandles(canvas [][]color.Color, rect *models.Rectangle, c color.Color) {
 	// Draw corner handles with larger size for easier grabbing
 	points := rect.GetControlPoints()

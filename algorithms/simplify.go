@@ -1,7 +1,7 @@
 package algorithms
 
-// SimplifyPolygon removes duplicate or near-duplicate vertices from a polygon
-// threshold determines how close points need to be to be considered duplicates
+
+
 func SimplifyPolygon(points []Point, threshold float64) []Point {
 	if len(points) < 3 {
 		return points
@@ -48,7 +48,7 @@ func SimplifyPolygon(points []Point, threshold float64) []Point {
 	return result
 }
 
-// IsPolygonSimple checks if the polygon has no self-intersections
+
 func IsPolygonSimple(vertices []Point) bool {
 	n := len(vertices)
 	if n < 3 {
@@ -77,7 +77,7 @@ func IsPolygonSimple(vertices []Point) bool {
 	return true
 }
 
-// doLinesIntersect checks if two line segments intersect
+
 func doLinesIntersect(p1, q1, p2, q2 Point) bool {
 	// Calculate orientations
 	o1 := orientation(p1, q1, p2)
@@ -107,8 +107,8 @@ func doLinesIntersect(p1, q1, p2, q2 Point) bool {
 	return false
 }
 
-// orientation calculates the orientation of triplet (p, q, r)
-// 0 = collinear, 1 = clockwise, 2 = counterclockwise
+
+
 func orientation(p, q, r Point) int {
 	val := (q.Y - p.Y) * (r.X - q.X) - (q.X - p.X) * (r.Y - q.Y)
 	if val == 0 {
@@ -120,7 +120,7 @@ func orientation(p, q, r Point) int {
 	return 2 // counter-clockwise
 }
 
-// onSegment checks if point q lies on segment pr
+
 func onSegment(p, q, r Point) bool {
 	return q.X <= max(p.X, r.X) && q.X >= min(p.X, r.X) &&
 		   q.Y <= max(p.Y, r.Y) && q.Y >= min(p.Y, r.Y)

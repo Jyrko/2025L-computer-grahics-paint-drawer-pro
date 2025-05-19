@@ -11,7 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// ResizePoint represents which control point is being dragged
+
 type ResizePoint int
 
 const (

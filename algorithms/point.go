@@ -1,8 +1,8 @@
 package algorithms
 
-// Point is already defined in drawing.go
 
-// PointAdapter is a helper function to convert model.Point slices to algorithm.Point slices
+
+
 func PointAdapter(modelPoints interface{}) []Point {
 	var algorithmPoints []Point
 

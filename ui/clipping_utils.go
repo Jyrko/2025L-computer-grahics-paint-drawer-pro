@@ -5,8 +5,8 @@ import (
 	"paint-drawer-pro/models"
 )
 
-// ClipPolygon performs polygon clipping using the Sutherland-Hodgman algorithm
-// It handles the conversion between model.Point and algorithm.Point
+
+
 func ClipPolygon(subject, clip []models.Point) []models.Point {
 	// Convert model points to algorithm points
 	subjectPoints := make([]algorithms.Point, len(subject))
