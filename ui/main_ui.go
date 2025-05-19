@@ -20,6 +20,7 @@ type MainUI struct {
 	Window          fyne.Window
 	Container       *fyne.Container
 	Canvas          *canvas.Raster
+	BaseImage       *image.RGBA // Added to store the base pixel data of the canvas
 	ToolsContainer  *fyne.Container
 	StatusLabel     *widget.Label
 	CurrentToolText *widget.Label
@@ -45,7 +46,6 @@ func NewMainUI(window fyne.Window) *MainUI {
 		},
 	}
 
-	
 	ui.PillLengthLabel = widget.NewLabel("Pill Length:")
 	pillLengthValue := widget.NewLabel("100")
 	ui.PillLengthSlider = widget.NewSlider(50, 600)
@@ -118,6 +118,13 @@ func NewMainUI(window fyne.Window) *MainUI {
 		ui.PillLengthSlider.SetValue(100)
 	})
 
+	scanlineFillBtn := widget.NewButton("Scanline Fill", func() {
+		ui.State.CurrentAction = "scanline_fill"
+		ui.CurrentToolText.SetText("Current tool: Scanline Fill")
+		ui.StatusLabel.SetText("Scanline Fill tool selected. Click to fill an area.")
+		ui.PillLengthContainer.Hide()
+	})
+
 	selectBtn := widget.NewButton("Select", func() {
 		ui.State.CurrentAction = "select"
 		ui.CurrentToolText.SetText("Current tool: Select")
@@ -129,6 +136,23 @@ func NewMainUI(window fyne.Window) *MainUI {
 
 	clearBtn := widget.NewButton("Clear All", func() {
 		ui.State.Shapes = []models.Shape{}
+		ui.State.CurrentShape = nil
+		ui.State.SelectedShape = nil
+		ui.State.SelectionRect = nil // Clear selection rectangle for scanline fill
+		ui.State.FillStage = ""      // Reset fill stage
+
+		// Reset BaseImage to a white canvas
+		if ui.Canvas != nil && ui.Canvas.Size().Width > 0 && ui.Canvas.Size().Height > 0 {
+			canvasSize := ui.Canvas.Size()
+			w := int(canvasSize.Width)
+			h := int(canvasSize.Height)
+			ui.BaseImage = image.NewRGBA(image.Rect(0, 0, w, h))
+			for y := 0; y < h; y++ {
+				for x := 0; x < w; x++ {
+					ui.BaseImage.Set(x, y, color.White)
+				}
+			}
+		}
 		ui.Canvas.Refresh()
 		ui.StatusLabel.SetText("Canvas cleared")
 	})
@@ -432,6 +456,7 @@ func NewMainUI(window fyne.Window) *MainUI {
 		pillBtn,
 		polygonBtn,
 		rectangleBtn,
+		scanlineFillBtn, // Add scanline fill button
 		selectBtn,
 		widget.NewSeparator(),
 		clearBtn,
@@ -468,27 +493,66 @@ func NewMainUI(window fyne.Window) *MainUI {
 }
 
 func (ui *MainUI) renderCanvas(w, h int) image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-
-	
-	for x := 0; x < w; x++ {
+	// Ensure BaseImage is initialized and of the correct size
+	if ui.BaseImage == nil || ui.BaseImage.Bounds().Dx() != w || ui.BaseImage.Bounds().Dy() != h {
+		ui.BaseImage = image.NewRGBA(image.Rect(0, 0, w, h))
+		// Initialize with white background
 		for y := 0; y < h; y++ {
-			img.Set(x, y, color.White)
+			for x := 0; x < w; x++ {
+				ui.BaseImage.Set(x, y, color.White)
+			}
+		}
+			// When BaseImage is reinitialized (e.g. on resize), we should redraw existing shapes onto it.
+		// This ensures that previously drawn permanent shapes are not lost.
+		for _, shape := range ui.State.Shapes {
+			tempCanvasForShape := make([][]color.Color, h) // Use a temp Go draw canvas for each shape
+			for j := range tempCanvasForShape {
+				tempCanvasForShape[j] = make([]color.Color, w)
+				for i := 0; i < w; i++ {
+					tempCanvasForShape[j][i] = ui.BaseImage.At(i,j) // Start with current BaseImage content
+				}
+			}
+			shape.Draw(tempCanvasForShape, ui.State.AntiAliasing)
+			// Transfer the drawn shape from tempCanvasForShape to ui.BaseImage
+			for yDraw := 0; yDraw < h; yDraw++ {
+				for xDraw := 0; xDraw < w; xDraw++ {
+					if tempCanvasForShape[yDraw][xDraw] != nil {
+						// Check if the color is different from the initial white to avoid unnecessary Set operations if not needed
+						// This is a micro-optimization, main point is to transfer the drawn shape.
+						// Simplified: always set if drawn.
+						ui.BaseImage.Set(xDraw, yDraw, tempCanvasForShape[yDraw][xDraw])
+					}
+				}
+			}
 		}
 	}
 
-	
+	// Create a new image for this frame, starting with the content of BaseImage
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, ui.BaseImage.At(x,y))
+		}
+	}
+
+	// Draw all permanent shapes (already on BaseImage, but this loop is for other effects or if BaseImage wasn't pre-drawn)
+	// For current logic, BaseImage should already contain these. This loop might be redundant if BaseImage is always up-to-date.
+	// However, keeping it allows shapes to be drawn with current AA settings if those changed.
+	// Let's refine: shapes are drawn onto BaseImage when they are finalized or when BaseImage is resized.
+	// So, this loop here is more about overlaying dynamic elements or ensuring current AA is applied if we re-render all shapes each frame.
+	// Given scanline fill modifies BaseImage directly, we draw shapes on top of whatever BaseImage holds.
+
+	// Draw shapes from ui.State.Shapes onto the current frame's image (img)
+	// This ensures they are drawn over any scanline fills that might be in BaseImage
 	for _, shape := range ui.State.Shapes {
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
 			for i := 0; i < w; i++ {
-				canvas[j][i] = img.At(i, j)
+				canvas[j][i] = img.At(i, j) // Start with current image content for this shape layer
 			}
 		}
-
 		shape.Draw(canvas, ui.State.AntiAliasing)
-
 		for x := 0; x < w; x++ {
 			for y := 0; y < h; y++ {
 				if canvas[y][x] != nil {
@@ -498,7 +562,7 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	
+	// Draw the current shape being drawn (e.g., line before mouse release)
 	if ui.State.CurrentShape != nil {
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
@@ -519,20 +583,43 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 		}
 	}
 
-	
+	// Draw selection rectangle for scanline fill if it exists and we are in a relevant stage
+	if ui.State.CurrentAction == "scanline_fill" && (ui.State.FillStage == "selecting_area" || ui.State.FillStage == "awaiting_fill_point") && ui.State.SelectionRect != nil {
+		selectionRect := ui.State.SelectionRect
+		// Create a temporary canvas layer for the selection rectangle
+		tempCanvas := make([][]color.Color, h)
+		for j := range tempCanvas {
+			tempCanvas[j] = make([]color.Color, w)
+			// No need to copy img here, selection is drawn on top
+		}
+		selectionRect.Draw(tempCanvas, false) // Draw selection rect without anti-aliasing for clarity
+
+		// Overlay the tempCanvas onto img
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				if tempCanvas[y][x] != nil {
+					// Get the alpha value from the drawn color on tempCanvas
+					// We don't need r,g,b here, just alpha to check if it's transparent.
+					_, _, _, drawnA := tempCanvas[y][x].RGBA()
+					if drawnA > 0 { // Only draw if color is not fully transparent
+						img.Set(x,y, tempCanvas[y][x])
+					}
+				}
+			}
+		}
+	}
+
+	// Draw selection indicators for the "select" tool
 	if ui.State.CurrentAction == "select" && ui.State.SelectedShape != nil {
-		
+		// Draw control points for the selected shape
 		controlPoints := ui.State.SelectedShape.GetControlPoints()
-		
-		
-		indicatorColor := color.RGBA{0, 119, 255, 255} 
-		
-		
+		indicatorColor := color.RGBA{0, 119, 255, 255} // Blue color for selection indicators
+
 		canvas := make([][]color.Color, h)
 		for j := range canvas {
 			canvas[j] = make([]color.Color, w)
 		}
-		
+
 		// Special handling for rectangles to show resize handles
 		if rect, isRect := ui.State.SelectedShape.(*models.Rectangle); isRect {
 			drawRectangleSelectionHandles(canvas, rect, indicatorColor)
@@ -542,8 +629,7 @@ func (ui *MainUI) renderCanvas(w, h int) image.Image {
 				drawSelectionIndicator(canvas, point.X, point.Y, 5, indicatorColor)
 			}
 		}
-		
-		
+
 		for x := 0; x < w; x++ {
 			for y := 0; y < h; y++ {
 				if canvas[y][x] != nil {
